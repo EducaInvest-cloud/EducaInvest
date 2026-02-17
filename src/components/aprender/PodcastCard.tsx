@@ -6,11 +6,11 @@ import {
   Pause,
   Clock,
   FileText,
-  ChevronDown,
   ChevronUp,
   BarChart2,
   Volume2,
-  VolumeX
+  VolumeX,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -268,11 +268,6 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     }
   };
 
-  const skip = (seconds: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, Math.min(audio.duration, audio.currentTime + seconds));
-  };
 
   const changePlaybackRate = () => {
     const audio = audioRef.current;
@@ -545,15 +540,18 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
                   <Button
                     onClick={togglePlayPause}
                     size="lg"
-                    className="relative overflow-hidden bg-white text-slate-900 hover:bg-slate-200 shadow-[0_0_30px_rgba(255,255,255,0.1)] rounded-full px-8 h-14 font-bold text-base transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] group/btn"
+                    disabled={isAudioLoading}
+                    className="relative overflow-hidden bg-white text-slate-900 hover:bg-slate-200 shadow-[0_0_30px_rgba(255,255,255,0.1)] rounded-full px-8 h-14 font-bold text-base transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] group/btn disabled:opacity-60 disabled:cursor-wait"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] group-hover/btn:animate-shimmer" />
-                    {isPlaying ? (
+                    {isAudioLoading ? (
+                      <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                    ) : isPlaying ? (
                       <Pause className="w-5 h-5 mr-3 fill-current" />
                     ) : (
                       <Play className="w-5 h-5 mr-3 fill-current" />
                     )}
-                    {isPlaying ? "Pausar" : "Começar Aula"}
+                    {isAudioLoading ? "Carregando..." : isPlaying ? "Pausar" : "Começar Aula"}
                   </Button>
 
                   {/* Controles Secundários */}

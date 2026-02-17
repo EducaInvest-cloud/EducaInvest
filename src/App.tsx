@@ -33,8 +33,8 @@ const App = () => (
           } />
           <Route path="/ranking" element={<Ranking />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
           <Route path="/login" element={<Login />} />
+          <Route path="*" element={<NotFound />} />
 
         </Routes>
       </BrowserRouter>

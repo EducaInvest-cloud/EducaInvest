@@ -45,8 +45,8 @@ const getTermIcon = (t: Termo) => {
 };
 
 export function TermCard({ term, hideLevel, isExpanded: controlledIsExpanded, onToggle }: TermCardProps) {
-  if (!term) return null;
   const [localIsExpanded, setLocalIsExpanded] = useState(false);
+  if (!term) return null;
 
   const isExpanded = controlledIsExpanded !== undefined ? controlledIsExpanded : localIsExpanded;
 
