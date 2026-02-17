@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo } from "react";
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Headphones,
@@ -41,12 +41,8 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   const [playbackRate, setPlaybackRate] = useState(1);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  const [isSeeking, setIsSeeking] = useState(false);
-  const isSeekingRef = useRef(false);
-  // Ref para rastrear o último tempo válido (evita bug de closure stale)
-  const lastKnownTimeRef = useRef(0);
-  // Estado local para o slider, desacoplado do currentTime durante o drag
-  const [sliderValue, setSliderValue] = useState([0]);
+  // Flag simples para saber se o usuário está arrastando o slider
+  const isDraggingRef = useRef(false);
 
   // Converte duração "6" ou "2:08" para segundos (estimado) para fallback
   const estimatedDuration = useMemo(() => {
@@ -76,79 +72,56 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     isPlaying
   }));
 
+  // Calcula a porcentagem de progresso para estilizar o range input
+  const progressPercent = useMemo(() => {
+    const max = duration || estimatedDuration;
+    if (max <= 0) return 0;
+    return (currentTime / max) * 100;
+  }, [currentTime, duration, estimatedDuration]);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => {
-      if (!isSeekingRef.current) {
-        // Proteção contra saltos para 0 inesperados do navegador durante transições de buffer
-        // Usa ref em vez de state para evitar stale closure
-        if (audio.currentTime === 0 && lastKnownTimeRef.current > 1 && !audio.paused) {
-          return;
-        }
-        lastKnownTimeRef.current = audio.currentTime;
+    const onTimeUpdateEvent = () => {
+      // Só atualiza o state se o usuário NÃO estiver arrastando
+      if (!isDraggingRef.current) {
         setCurrentTime(audio.currentTime);
-        setSliderValue([audio.currentTime]);
       }
       if (onTimeUpdate) {
         onTimeUpdate(audio.currentTime, audio.duration || estimatedDuration);
       }
     };
 
-    const updateDuration = () => {
+    const onLoadedMetadata = () => {
       setDuration(audio.duration);
-      // Chama onTimeUpdate uma vez para garantir que duração seja passada
       if (onTimeUpdate) {
         onTimeUpdate(audio.currentTime, audio.duration);
       }
     };
 
-    const handleEnded = () => {
-      if (isSeekingRef.current) return; // Protege contra disparos falsos durante seek
+    const onEndedEvent = () => {
       setIsPlaying(false);
       setCurrentTime(0);
-      setSliderValue([0]);
-      lastKnownTimeRef.current = 0;
       audio.currentTime = 0;
       if (onEnded) onEnded();
     };
 
-    const handleSeeking = () => {
-      isSeekingRef.current = true;
-    };
-
-    const handleSeeked = () => {
-      // Delay para garantir que o buffer e o currentTime do navegador se estabilizaram
-      setTimeout(() => {
-        isSeekingRef.current = false;
-        setIsSeeking(false);
-      }, 200);
-    };
-
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("loadedmetadata", updateDuration);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("seeking", handleSeeking);
-    audio.addEventListener("seeked", handleSeeked);
+    audio.addEventListener("timeupdate", onTimeUpdateEvent);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("ended", onEndedEvent);
 
     return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("loadedmetadata", updateDuration);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("seeking", handleSeeking);
-      audio.removeEventListener("seeked", handleSeeked);
+      audio.removeEventListener("timeupdate", onTimeUpdateEvent);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("ended", onEndedEvent);
     };
   }, [onTimeUpdate, onEnded, estimatedDuration]);
 
   // Reset de estado ao mudar de aula
   useEffect(() => {
     setCurrentTime(0);
-    setSliderValue([0]);
-    setIsSeeking(false);
-    isSeekingRef.current = false;
-    lastKnownTimeRef.current = 0;
-    // Removido reset manual do audio.currentTime para evitar conflito com troca de src
+    isDraggingRef.current = false;
   }, [aula.id]);
 
   const togglePlayPause = () => {
@@ -163,39 +136,33 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     setIsPlaying(!isPlaying);
   };
 
-  const handleValueChange = (value: number[]) => {
-    isSeekingRef.current = true;
-    setIsSeeking(true);
-    setSliderValue(value);
-    // Atualiza o áudio em tempo real durante o drag para feedback visual
-    const audio = audioRef.current;
-    if (audio) {
-      audio.currentTime = value[0];
-    }
-  };
-
-  const handleValueCommit = (value: number[]) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const newTime = value[0];
-
-    audio.currentTime = newTime;
-    lastKnownTimeRef.current = newTime;
+  // Handlers do range input nativo — simples e confiáveis
+  const handleRangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = parseFloat(e.target.value);
     setCurrentTime(newTime);
-    setSliderValue([newTime]);
-
-    // Tenta forçar o play caso o navegador tenha pausado durante o seek
-    if (isPlaying) {
-      audio.play().catch(() => { });
+    // Atualiza o áudio em tempo real durante o drag
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
     }
+  }, []);
 
-    // Libera o lock de seeking após um breve delay para evitar conflitos
-    setTimeout(() => {
-      isSeekingRef.current = false;
-      setIsSeeking(false);
-    }, 300);
-  };
+  const handleRangeMouseDown = useCallback(() => {
+    isDraggingRef.current = true;
+  }, []);
+
+  const handleRangeMouseUp = useCallback((e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => {
+    isDraggingRef.current = false;
+    const target = e.target as HTMLInputElement;
+    const newTime = parseFloat(target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+      // Retoma a reprodução se estava tocando
+      if (isPlaying) {
+        audioRef.current.play().catch(() => { });
+      }
+    }
+  }, [isPlaying]);
 
   const handleVolumeChange = (value: number[]) => {
     const audio = audioRef.current;
@@ -469,17 +436,25 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
               {/* --- PLAYER DE ÁUDIO --- */}
               <div className="pt-4 space-y-4">
                 {/* Barra de Progresso */}
-                <div className="space-y-2 py-2 cursor-pointer">
-                  <Slider
-                    value={sliderValue}
-                    max={duration || estimatedDuration}
+                <div className="space-y-2 py-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={duration || estimatedDuration || 100}
                     step={0.1}
-                    onValueChange={handleValueChange}
-                    onValueCommit={handleValueCommit}
-                    className="cursor-pointer"
+                    value={currentTime}
+                    onChange={handleRangeInput}
+                    onMouseDown={handleRangeMouseDown}
+                    onMouseUp={handleRangeMouseUp}
+                    onTouchStart={handleRangeMouseDown}
+                    onTouchEnd={handleRangeMouseUp as any}
+                    className="audio-seek-slider w-full"
+                    style={{
+                      background: `linear-gradient(to right, hsl(var(--primary)) ${progressPercent}%, rgba(255,255,255,0.1) ${progressPercent}%)`
+                    }}
                   />
                   <div className="flex justify-between text-xs text-slate-400 font-mono">
-                    <span>{formatTime(sliderValue[0])}</span>
+                    <span>{formatTime(currentTime)}</span>
                     <span>{formatTime(duration || estimatedDuration)}</span>
                   </div>
                 </div>
