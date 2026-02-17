@@ -41,8 +41,12 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   const [playbackRate, setPlaybackRate] = useState(1);
 
   const audioRef = useRef<HTMLAudioElement>(null);
-  // Flag simples para saber se o usuário está arrastando o slider
+  // Ref para o input range — controle 100% via DOM, sem React
+  const rangeRef = useRef<HTMLInputElement>(null);
+  // Flag para saber se o usuário está arrastando o slider
   const isDraggingRef = useRef(false);
+  // Ref para guardar o tempo escolhido pelo usuário até o seek completar
+  const pendingSeekTimeRef = useRef<number | null>(null);
 
   // Converte duração "6" ou "2:08" para segundos (estimado) para fallback
   const estimatedDuration = useMemo(() => {
@@ -73,20 +77,30 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   }));
 
   // Calcula a porcentagem de progresso para estilizar o range input
-  const progressPercent = useMemo(() => {
+  const getProgressPercent = useCallback((time: number) => {
     const max = duration || estimatedDuration;
     if (max <= 0) return 0;
-    return (currentTime / max) * 100;
-  }, [currentTime, duration, estimatedDuration]);
+    return (time / max) * 100;
+  }, [duration, estimatedDuration]);
+
+  // Atualiza visualmente o range input via DOM (sem React)
+  const updateRangeVisual = useCallback((time: number) => {
+    const range = rangeRef.current;
+    if (!range) return;
+    range.value = String(time);
+    const pct = getProgressPercent(time);
+    range.style.background = `linear-gradient(to right, hsl(var(--primary)) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`;
+  }, [getProgressPercent]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const onTimeUpdateEvent = () => {
-      // Só atualiza o state se o usuário NÃO estiver arrastando
-      if (!isDraggingRef.current) {
+      // Só atualiza se o usuário NÃO estiver arrastando E não houver seek pendente
+      if (!isDraggingRef.current && pendingSeekTimeRef.current === null) {
         setCurrentTime(audio.currentTime);
+        updateRangeVisual(audio.currentTime);
       }
       if (onTimeUpdate) {
         onTimeUpdate(audio.currentTime, audio.duration || estimatedDuration);
@@ -95,6 +109,10 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
 
     const onLoadedMetadata = () => {
       setDuration(audio.duration);
+      // Atualiza o max do range input
+      if (rangeRef.current) {
+        rangeRef.current.max = String(audio.duration);
+      }
       if (onTimeUpdate) {
         onTimeUpdate(audio.currentTime, audio.duration);
       }
@@ -103,26 +121,43 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     const onEndedEvent = () => {
       setIsPlaying(false);
       setCurrentTime(0);
+      updateRangeVisual(0);
+      pendingSeekTimeRef.current = null;
       audio.currentTime = 0;
       if (onEnded) onEnded();
+    };
+
+    // Evento crucial: dispara quando o browser TERMINA de fazer o seek
+    const onSeekedEvent = () => {
+      if (pendingSeekTimeRef.current !== null) {
+        // O browser finalizou o seek. Agora é seguro liberar.
+        const seekedTime = pendingSeekTimeRef.current;
+        pendingSeekTimeRef.current = null;
+        setCurrentTime(seekedTime);
+        updateRangeVisual(seekedTime);
+      }
     };
 
     audio.addEventListener("timeupdate", onTimeUpdateEvent);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("ended", onEndedEvent);
+    audio.addEventListener("seeked", onSeekedEvent);
 
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdateEvent);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("ended", onEndedEvent);
+      audio.removeEventListener("seeked", onSeekedEvent);
     };
-  }, [onTimeUpdate, onEnded, estimatedDuration]);
+  }, [onTimeUpdate, onEnded, estimatedDuration, updateRangeVisual]);
 
   // Reset de estado ao mudar de aula
   useEffect(() => {
     setCurrentTime(0);
     isDraggingRef.current = false;
-  }, [aula.id]);
+    pendingSeekTimeRef.current = null;
+    updateRangeVisual(0);
+  }, [aula.id, updateRangeVisual]);
 
   const togglePlayPause = () => {
     const audio = audioRef.current;
@@ -136,24 +171,30 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     setIsPlaying(!isPlaying);
   };
 
-  // Handlers do range input nativo — simples e confiáveis
+  // === HANDLERS DO RANGE INPUT (UNCONTROLLED) ===
+  // O input muda via DOM, não via React state, evitando race conditions
+
   const handleRangeInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newTime = parseFloat(e.target.value);
+    // Atualiza o display de tempo e o visual da barra
     setCurrentTime(newTime);
-    // Atualiza o áudio em tempo real durante o drag
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
+    const pct = getProgressPercent(newTime);
+    e.target.style.background = `linear-gradient(to right, hsl(var(--primary)) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`;
+  }, [getProgressPercent]);
+
+  const handleRangePointerDown = useCallback(() => {
+    isDraggingRef.current = true;
+    // Pausa o áudio durante o drag para evitar conflitos
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
     }
   }, []);
 
-  const handleRangeMouseDown = useCallback(() => {
-    isDraggingRef.current = true;
-  }, []);
-
-  const handleRangeMouseUp = useCallback((e: React.MouseEvent<HTMLInputElement> | React.TouchEvent<HTMLInputElement>) => {
+  const handleRangePointerUp = useCallback((e: React.PointerEvent<HTMLInputElement>) => {
     isDraggingRef.current = false;
-    const target = e.target as HTMLInputElement;
-    const newTime = parseFloat(target.value);
+    const newTime = parseFloat(e.currentTarget.value);
+    pendingSeekTimeRef.current = newTime;
+
     if (audioRef.current) {
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
@@ -438,19 +479,18 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
                 {/* Barra de Progresso */}
                 <div className="space-y-2 py-2">
                   <input
+                    ref={rangeRef}
                     type="range"
                     min={0}
                     max={duration || estimatedDuration || 100}
                     step={0.1}
-                    value={currentTime}
+                    defaultValue={0}
                     onChange={handleRangeInput}
-                    onMouseDown={handleRangeMouseDown}
-                    onMouseUp={handleRangeMouseUp}
-                    onTouchStart={handleRangeMouseDown}
-                    onTouchEnd={handleRangeMouseUp as any}
+                    onPointerDown={handleRangePointerDown}
+                    onPointerUp={handleRangePointerUp}
                     className="audio-seek-slider w-full"
                     style={{
-                      background: `linear-gradient(to right, hsl(var(--primary)) ${progressPercent}%, rgba(255,255,255,0.1) ${progressPercent}%)`
+                      background: `linear-gradient(to right, hsl(var(--primary)) 0%, rgba(255,255,255,0.1) 0%)`
                     }}
                   />
                   <div className="flex justify-between text-xs text-slate-400 font-mono">
