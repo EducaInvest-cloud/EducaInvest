@@ -39,6 +39,7 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [isAudioLoading, setIsAudioLoading] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   // Ref para o input range — controle 100% via DOM, sem React
@@ -47,6 +48,8 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   const isDraggingRef = useRef(false);
   // Ref para guardar o tempo escolhido pelo usuário até o seek completar
   const pendingSeekTimeRef = useRef<number | null>(null);
+  // Blob URL do áudio carregado em memória
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   // Converte duração "6" ou "2:08" para segundos (estimado) para fallback
   const estimatedDuration = useMemo(() => {
@@ -91,6 +94,43 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     const pct = getProgressPercent(time);
     range.style.background = `linear-gradient(to right, hsl(var(--primary)) ${pct}%, rgba(255,255,255,0.1) ${pct}%)`;
   }, [getProgressPercent]);
+
+  // === CARREGA O ÁUDIO COMO BLOB URL ===
+  // Isso baixa o arquivo inteiro na memória, permitindo seeking
+  // mesmo em servidores que não suportam HTTP Range Requests
+  useEffect(() => {
+    let cancelled = false;
+    let currentBlobUrl: string | null = null;
+
+    const loadAudioBlob = async () => {
+      setIsAudioLoading(true);
+      try {
+        const response = await fetch(`/audios/Aula-${aula.id}.mp3`);
+        if (cancelled) return;
+        const blob = await response.blob();
+        if (cancelled) return;
+        currentBlobUrl = URL.createObjectURL(blob);
+        setBlobUrl(currentBlobUrl);
+      } catch (err) {
+        console.error('Erro ao carregar áudio como Blob:', err);
+        // Fallback: usa URL direta (seeking pode não funcionar)
+        if (!cancelled) {
+          setBlobUrl(`/audios/Aula-${aula.id}.mp3`);
+        }
+      } finally {
+        if (!cancelled) setIsAudioLoading(false);
+      }
+    };
+
+    loadAudioBlob();
+
+    return () => {
+      cancelled = true;
+      if (currentBlobUrl && currentBlobUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(currentBlobUrl);
+      }
+    };
+  }, [aula.id]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -405,10 +445,10 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
 
   return (
     <div className="w-full perspective-1000">
-      {/* Áudio oculto - MOVIDO PARA FORA DO MOTION.DIV PARA SER ESTÁVEL */}
+      {/* Áudio oculto — usa Blob URL para suporte a seeking em qualquer servidor */}
       <audio
         ref={audioRef}
-        src={`/audios/Aula-${aula.id}.mp3`}
+        src={blobUrl || undefined}
         preload="auto"
       />
 
