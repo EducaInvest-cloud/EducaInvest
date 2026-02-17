@@ -58,7 +58,7 @@ export function LessonContent({
     aulaFinalizada = false
 }: LessonContentProps) {
 
-    const [expandedTermId, setExpandedTermId] = useState<number | null>(null);
+    const [expandedTermIds, setExpandedTermIds] = useState<Set<number>>(new Set());
 
     const scrollbarClass = "lg:overflow-y-auto lg:[&::-webkit-scrollbar]:w-1.5 lg:[&::-webkit-scrollbar-track]:bg-transparent lg:[&::-webkit-scrollbar-thumb]:bg-slate-700/50 lg:[&::-webkit-scrollbar-thumb]:rounded-full hover:lg:[&::-webkit-scrollbar-thumb]:bg-slate-600 transition-colors";
 
@@ -161,8 +161,16 @@ export function LessonContent({
                         <div key={termo.id} id={`term-${termo.id}`}>
                             <TermCard
                                 term={termo}
-                                isExpanded={expandedTermId === termo.id}
-                                onToggle={() => setExpandedTermId(expandedTermId === termo.id ? null : termo.id)}
+                                isExpanded={expandedTermIds.has(termo.id)}
+                                onToggle={() => setExpandedTermIds(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(termo.id)) {
+                                        next.delete(termo.id);
+                                    } else {
+                                        next.add(termo.id);
+                                    }
+                                    return next;
+                                })}
                             />
                         </div>
                     ))}
