@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Aula, Termo } from "@/lib/termosData";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface PodcastCardHandle {
   play: () => void;
@@ -105,7 +106,9 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     const loadAudioBlob = async () => {
       setIsAudioLoading(true);
       try {
-        const response = await fetch(`/audios/Aula-${aula.id}.mp3`);
+        // Constrói a URL pública do Supabase Storage
+        const { data } = supabase.storage.from('audios').getPublicUrl(`Aula-${aula.id}.mp3`);
+        const response = await fetch(data.publicUrl);
         if (cancelled) return;
         const blob = await response.blob();
         if (cancelled) return;
@@ -113,9 +116,10 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
         setBlobUrl(currentBlobUrl);
       } catch (err) {
         console.error('Erro ao carregar áudio como Blob:', err);
-        // Fallback: usa URL direta (seeking pode não funcionar)
+        // Fallback: usa URL direta do Supabase (seeking pode não funcionar)
         if (!cancelled) {
-          setBlobUrl(`/audios/Aula-${aula.id}.mp3`);
+          const { data } = supabase.storage.from('audios').getPublicUrl(`Aula-${aula.id}.mp3`);
+          setBlobUrl(data.publicUrl);
         }
       } finally {
         if (!cancelled) setIsAudioLoading(false);
