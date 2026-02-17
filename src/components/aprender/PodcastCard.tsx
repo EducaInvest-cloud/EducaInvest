@@ -43,6 +43,8 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isSeeking, setIsSeeking] = useState(false);
   const isSeekingRef = useRef(false);
+  // Ref para rastrear o último tempo válido (evita bug de closure stale)
+  const lastKnownTimeRef = useRef(0);
   // Estado local para o slider, desacoplado do currentTime durante o drag
   const [sliderValue, setSliderValue] = useState([0]);
 
@@ -81,9 +83,11 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     const updateTime = () => {
       if (!isSeekingRef.current) {
         // Proteção contra saltos para 0 inesperados do navegador durante transições de buffer
-        if (audio.currentTime === 0 && currentTime > 1 && !audio.paused) {
+        // Usa ref em vez de state para evitar stale closure
+        if (audio.currentTime === 0 && lastKnownTimeRef.current > 1 && !audio.paused) {
           return;
         }
+        lastKnownTimeRef.current = audio.currentTime;
         setCurrentTime(audio.currentTime);
         setSliderValue([audio.currentTime]);
       }
@@ -105,6 +109,7 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
       setIsPlaying(false);
       setCurrentTime(0);
       setSliderValue([0]);
+      lastKnownTimeRef.current = 0;
       audio.currentTime = 0;
       if (onEnded) onEnded();
     };
@@ -114,11 +119,11 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     };
 
     const handleSeeked = () => {
-      // Delay maior para garantir que o buffer e o currentTime do navegador se estabilizaram
+      // Delay para garantir que o buffer e o currentTime do navegador se estabilizaram
       setTimeout(() => {
         isSeekingRef.current = false;
         setIsSeeking(false);
-      }, 300); // 300ms para maior segurança em conexões lentas ou buffers
+      }, 200);
     };
 
     audio.addEventListener("timeupdate", updateTime);
@@ -142,6 +147,7 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     setSliderValue([0]);
     setIsSeeking(false);
     isSeekingRef.current = false;
+    lastKnownTimeRef.current = 0;
     // Removido reset manual do audio.currentTime para evitar conflito com troca de src
   }, [aula.id]);
 
@@ -161,7 +167,11 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     isSeekingRef.current = true;
     setIsSeeking(true);
     setSliderValue(value);
-    // Não atualizamos o currentTime do áudio aqui para evitar "briga"
+    // Atualiza o áudio em tempo real durante o drag para feedback visual
+    const audio = audioRef.current;
+    if (audio) {
+      audio.currentTime = value[0];
+    }
   };
 
   const handleValueCommit = (value: number[]) => {
@@ -169,9 +179,9 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
     if (!audio) return;
 
     const newTime = value[0];
-    isSeekingRef.current = true; // Garante o lock até o evento 'seeked'
 
     audio.currentTime = newTime;
+    lastKnownTimeRef.current = newTime;
     setCurrentTime(newTime);
     setSliderValue([newTime]);
 
@@ -180,13 +190,11 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
       audio.play().catch(() => { });
     }
 
-    // Safety timeout aumentado
+    // Libera o lock de seeking após um breve delay para evitar conflitos
     setTimeout(() => {
-      if (isSeekingRef.current) {
-        isSeekingRef.current = false;
-        setIsSeeking(false);
-      }
-    }, 2000);
+      isSeekingRef.current = false;
+      setIsSeeking(false);
+    }, 300);
   };
 
   const handleVolumeChange = (value: number[]) => {
@@ -468,10 +476,6 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
                     step={0.1}
                     onValueChange={handleValueChange}
                     onValueCommit={handleValueCommit}
-                    onPointerDown={() => {
-                      isSeekingRef.current = true;
-                      setIsSeeking(true);
-                    }}
                     className="cursor-pointer"
                   />
                   <div className="flex justify-between text-xs text-slate-400 font-mono">
