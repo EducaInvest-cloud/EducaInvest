@@ -25,10 +25,7 @@ export default function Aprender() {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
 
-  // Admin detection (memoized or calculated once)
-  const isAdmin = useMemo(() => {
-    return localStorage.getItem('educainvest_admin') === 'true' || user?.email === 'brunogd964@gmail.com';
-  }, [user]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Use custom hook for progress logic
   const {
@@ -50,7 +47,7 @@ export default function Aprender() {
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user);
 
-        const [lessonsResult, termsResult, progressResult] = await Promise.all([
+        const [lessonsResult, termsResult, progressResult, perfilResult] = await Promise.all([
           supabase.from('lessons').select('*').order('order_index', { ascending: true }),
           supabase.from('terms').select('*'),
           session?.user
@@ -58,8 +55,17 @@ export default function Aprender() {
               .select('lesson_id')
               .eq('user_id', session.user.id)
               .eq('is_completed', true)
+            : Promise.resolve({ data: null }),
+          session?.user
+            ? supabase.from('perfis')
+              .select('is_admin')
+              .eq('id', session.user.id)
+              .single()
             : Promise.resolve({ data: null })
         ]);
+
+        // Admin check seguro — vem do Supabase, não do client
+        setIsAdmin(perfilResult.data?.is_admin === true);
 
         const lessonsData = lessonsResult.data;
         const termsData = termsResult.data;
