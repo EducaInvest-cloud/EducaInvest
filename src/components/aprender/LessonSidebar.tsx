@@ -12,7 +12,7 @@ interface LessonSidebarProps {
     completedLessonIds: number[];
     handleLessonChange: (id: number) => void;
     isAdmin?: boolean;
-    onBackToMap?: () => void;
+
 }
 
 export function LessonSidebar({
@@ -23,7 +23,6 @@ export function LessonSidebar({
     completedLessonIds,
     handleLessonChange,
     isAdmin = false,
-    onBackToMap,
     user
 }: LessonSidebarProps & { user?: any }) {
 
@@ -58,15 +57,7 @@ export function LessonSidebar({
         )}>
             <div className="p-4 lg:p-6">
                 <div className="sticky top-0 bg-slate-900/90 backdrop-blur-xl z-10 -mx-2 px-2 py-2 mb-2 lg:mb-6 rounded-lg space-y-2">
-                    {onBackToMap && (
-                        <button
-                            onClick={onBackToMap}
-                            className="hidden lg:flex w-full items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-white transition-colors p-2 rounded-md hover:bg-white/5 border border-transparent hover:border-white/5"
-                        >
-                            <ChevronDown className="w-4 h-4 rotate-90" />
-                            Voltar ao Mapa
-                        </button>
-                    )}
+
 
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

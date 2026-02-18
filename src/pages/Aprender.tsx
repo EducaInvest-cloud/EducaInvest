@@ -199,7 +199,7 @@ export default function Aprender() {
             completedLessonIds={completedLessonIds}
             handleLessonChange={handleLessonChange}
             isAdmin={isAdmin}
-            onBackToMap={() => { }} // No more journey map
+
             user={user}
           />
 
