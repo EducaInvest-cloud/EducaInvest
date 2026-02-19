@@ -105,25 +105,42 @@ export function ChatWidget() {
                 throw new Error("Webhook URL not configured");
             }
 
+            console.log("[Chat] Sending to webhook:", N8N_WEBHOOK_URL);
+
             const response = await fetch(N8N_WEBHOOK_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ pergunta: userMessage.content }), // Matched with n8n workflow expectation {{ $json.body.pergunta }}
+                body: JSON.stringify({ pergunta: userMessage.content }),
             });
 
+            console.log("[Chat] Response status:", response.status, response.statusText);
+            console.log("[Chat] Response content-type:", response.headers.get('content-type'));
+
             if (!response.ok) {
-                throw new Error('Falha na comunicação com a IA');
+                const errorBody = await response.text().catch(() => '');
+                console.error("[Chat] Error response body:", errorBody);
+                throw new Error(`Falha na comunicação com a IA (${response.status})`);
             }
 
-            const data = await response.json();
+            // Read response as text first to avoid crashing on empty/non-JSON bodies
+            const rawText = await response.text();
+            console.log("[Chat] Raw response:", rawText.substring(0, 500));
 
-            // Expecting { output: "answer text" } or similar from n8n. Adjust as needed.
-            // If n8n returns simple text, handle that. If JSON object, access field.
-            // Common n8n webhook response is often just the JSON data returned by the last node.
-            // Assuming the last node returns a JSON with a field 'text' or 'output'.
-            // Expecting { output: "answer text" } or { text: "answer text" } or { message: "answer text" }
+            if (!rawText || rawText.trim() === '') {
+                throw new Error('Resposta vazia do servidor');
+            }
+
+            let data: any;
+            try {
+                data = JSON.parse(rawText);
+            } catch (e) {
+                // Response is plain text, not JSON — use it directly
+                console.log("[Chat] Response is plain text, using directly");
+                data = rawText;
+            }
+
             // Handle potential double-serialization (n8n sometimes returns JSON as a string)
             let parsedData = data;
             if (typeof data === 'string') {
@@ -202,7 +219,9 @@ export function ChatWidget() {
                 role: 'assistant',
                 content: !N8N_WEBHOOK_URL
                     ? "⚠️ Configuração pendente: Adicione a URL do Webhook n8n no arquivo .env (VITE_N8N_WEBHOOK_URL)."
-                    : "Desculpe, tive um problema para processar sua pergunta. Tente novamente mais tarde."
+                    : (error as Error)?.message?.includes('vazia')
+                        ? "⚠️ O webhook retornou uma resposta vazia. Verifique se o fluxo do n8n está ativo e configurado corretamente."
+                        : "Desculpe, tive um problema para processar sua pergunta. Tente novamente mais tarde."
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
