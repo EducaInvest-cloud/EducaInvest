@@ -116,13 +116,15 @@ export function ChatWidget() {
             });
 
             console.log("[Chat] Response status:", response.status, response.statusText);
-            console.log("[Chat] Response content-type:", response.headers.get('content-type'));
+            console.log("[Chat] Response headers:", Object.fromEntries(response.headers.entries()));
+
 
             if (!response.ok) {
                 const errorBody = await response.text().catch(() => '');
                 console.error("[Chat] Error response body:", errorBody);
-                throw new Error(`Falha na comunicação com a IA (${response.status})`);
+                throw new Error(`Falha na comunicação com a IA (${response.status}): ${errorBody || response.statusText}`);
             }
+
 
             // Read response as text first to avoid crashing on empty/non-JSON bodies
             const rawText = await response.text();
@@ -214,14 +216,16 @@ export function ChatWidget() {
             setMessages(prev => [...prev, botMessage]);
         } catch (error) {
             console.error("Error sending message:", error);
+            const errorMessageContent = !N8N_WEBHOOK_URL
+                ? "⚠️ Configuração pendente: Adicione a URL do Webhook n8n no arquivo .env (VITE_N8N_WEBHOOK_URL)."
+                : (error as Error)?.message?.includes('vazia')
+                    ? "⚠️ O webhook retornou uma resposta vazia. Verifique se o fluxo do n8n está ativo e configurado corretamente."
+                    : `Desculpe, tive um problema para processar sua pergunta. Erro: ${(error as Error).message}`;
+
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: !N8N_WEBHOOK_URL
-                    ? "⚠️ Configuração pendente: Adicione a URL do Webhook n8n no arquivo .env (VITE_N8N_WEBHOOK_URL)."
-                    : (error as Error)?.message?.includes('vazia')
-                        ? "⚠️ O webhook retornou uma resposta vazia. Verifique se o fluxo do n8n está ativo e configurado corretamente."
-                        : "Desculpe, tive um problema para processar sua pergunta. Tente novamente mais tarde."
+                content: errorMessageContent
             };
             setMessages(prev => [...prev, errorMessage]);
         } finally {
