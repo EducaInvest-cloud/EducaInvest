@@ -160,22 +160,60 @@ INSERT INTO public.consultor_questions (text, type, explanation, icon, difficult
 ('Investir em empresas ESG (Ambiental, Social e Governança) visando sustentabilidade.', 'good', 'Futuro dos Negócios! Empresas com boa governança e sustentáveis tendem a ter menos riscos de processos, multas ambientais e escândalos, gerando valor mais resiliente no longo prazo.', '♻️', 'hard');
 
 
--- Inserir Perguntas DESAFIO DOS TERMOS (16 Termos)
+-- Inserir Perguntas DESAFIO DOS TERMOS (50 Termos no Total)
 
 INSERT INTO public.term_questions (term, definition, difficulty) VALUES
-('Selic', 'Taxa básica de juros da economia.', 'easy'),
-('Liquidez', 'Facilidade de transformar um ativo em dinheiro.', 'easy'),
-('Dividendo', 'Parte do lucro da empresa distribuída aos acionistas.', 'easy'),
-('IPCA', 'Índice oficial de inflação no Brasil.', 'easy'),
-('CDB', 'Empréstimo que você faz para o banco.', 'easy'),
-('Volatilidade', 'Variação do preço de um ativo ao longo do tempo.', 'medium'),
-('Day Trade', 'Compra e venda de ativos no mesmo dia.', 'medium'),
-('FGC', 'Garantia de até R$ 250 mil em caso de quebra do banco.', 'medium'),
-('IOF', 'Imposto sobre Operações Financeiras.', 'medium'),
-('Câmbio', 'Troca de uma moeda por outra (ex: Real por Dólar).', 'medium'),
-('Bear Market', 'Mercado em tenência de baixa (pessimista).', 'hard'),
-('Bull Market', 'Mercado em tendência de alta (otimista).', 'hard'),
-('PLR', 'Participação nos Lucros e Resultados.', 'hard'),
-('Royalty', 'Pagamento pelo direito de uso de uma propriedade ou marca.', 'hard'),
-('Benchmark', 'Índice de referência para comparar rentabilidade.', 'hard'),
-('Passivo', 'Dívidas e obrigações financeiras.', 'hard');
+-- 1-16 (Antigos)
+('Selic', 'Taxa básica de juros da economia definida pelo Banco Central.', 'easy'),
+('Liquidez', 'Velocidade e facilidade com que você consegue resgatar seu dinheiro.', 'easy'),
+('Dividendo', 'Parcela do lucro da empresa que é distribuída aos acionistas.', 'easy'),
+('IPCA', 'Índice oficial de inflação no Brasil (mede o custo de vida).', 'easy'),
+('CDB', 'Certificado de Depósito Bancário: você empresta para o banco.', 'easy'),
+('Volatilidade', 'O quanto o preço de um ativo sobe e desce em um período.', 'medium'),
+('Day Trade', 'Operação de compra e venda de ativos iniciada e encerrada no mesmo dia.', 'medium'),
+('FGC', 'Fundo que garante até R$ 250 mil se o banco quebrar.', 'medium'),
+('IOF', 'Imposto sobre Operações Financeiras (cobrado em empréstimos e câmbio).', 'medium'),
+('Câmbio', 'Relação de valor entre duas moedas (Ex: Quantos Reais valem 1 Dólar).', 'medium'),
+('Bear Market', 'Mercado com tendência de baixa e pessimismo generalizado.', 'hard'),
+('Bull Market', 'Mercado com tendência de alta e otimismo entre investidores.', 'hard'),
+('PLR', 'Participação nos Lucros e Resultados paga por empresas a funcionários.', 'hard'),
+('Royalty', 'Pagamento pelo direito de uso, exploração ou comercialização de um bem.', 'hard'),
+('Benchmark', 'Índice de referência (meta) para comparar a rentabilidade de um fundo.', 'hard'),
+('Passivo', 'Tudo aquilo que tira dinheiro do seu bolso (dívidas, despesas).', 'hard'),
+
+-- NOVOS (Expandindo para 50)
+-- Renda Fixa & Economia
+('LCI', 'Letra de Crédito Imobiliário: investimento isento de IR para pessoa física.', 'easy'),
+('LCA', 'Letra de Crédito do Agronegócio: também isenta de Imposto de Renda.', 'easy'),
+('Tesouro Direto', 'Programa para comprar títulos da dívida pública federal (emprestar pro governo).', 'easy'),
+('CDI', 'Taxa que os bancos cobram para emprestar dinheiro entre si (referência da Renda Fixa).', 'easy'),
+('Juros Compostos', 'Quando os juros rendem sobre os juros acumulados (efeito bola de neve).', 'easy'),
+('Rentabilidade Real', 'Quanto seu dinheiro rendeu DESCONTANDO a inflação do período.', 'medium'),
+('PIB', 'Soma de todos os bens e serviços produzidos pelo país (termômetro da economia).', 'medium'),
+('Copom', 'Comitê do Banco Central que se reúne a cada 45 dias para definir a Selic.', 'medium'),
+
+-- Renda Variável & Bolsa
+('Ação', 'A menor pedaço de uma empresa. Quem compra vira sócio.', 'easy'),
+('FII', 'Fundo de Investimento Imobiliário: como ser dono de pedaços de shoppings e prédios.', 'easy'),
+('Blue Chip', 'Ações de empresas grandes, líderes de mercado e com alta liquidez.', 'medium'),
+('Small Cap', 'Ações de empresas menores, com maior potencial de crescimento (e risco).', 'medium'),
+('IPO', 'Oferta Pública Inicial: quando uma empresa estreia na Bolsa de Valores.', 'hard'),
+('Home Broker', 'Plataforma digital que permite negociar ações pela internet.', 'easy'),
+('Ticker', 'O código de negociação de um ativo na bolsa (Ex: PETR4, VALE3).', 'easy'),
+('Split', 'Desdobramento: dividir uma ação em várias para baratear o preço unitário.', 'hard'),
+('Inplit', 'Grupamento: juntar várias ações em uma só (o oposto de Split).', 'hard'),
+
+-- Fundos e Perfis
+('Come-Cotas', 'Antecipação semestral de Imposto de Renda em fundos de investimento.', 'hard'),
+('Perfil Conservador', 'Investidor que prioriza segurança e tem aversão a perder dinheiro.', 'easy'),
+('Perfil Arrojado', 'Investidor que aceita oscilações bruscas em busca de maiores retornos.', 'easy'),
+('Taxa de Administração', 'Valor pago ao gestor para cuidar do fundo de investimento.', 'medium'),
+('Taxa de Performance', 'Bônus pago ao gestor quando ele supera a meta (benchmark) do fundo.', 'hard'),
+
+-- Conceitos & Armadilhas
+('Bolha Financeira', 'Quando o preço de um ativo sobe muito além do seu valor real e depois despenca.', 'medium'),
+('Efeito Manada', 'Seguir a multidão nos investimentos sem fazer sua própria análise.', 'medium'),
+('Custo de Oportunidade', 'O que você deixa de ganhar ao escolher uma opção em vez de outra.', 'hard'),
+('Spread Bancário', 'Diferença entre os juros que o banco paga pra você e os juros que ele cobra.', 'hard'),
+('Alavancagem', 'Operar com dinheiro emprestado ou maior que seu patrimônio (risco de quebrar).', 'hard'),
+('Circuit Breaker', 'Mecanismo de segurança que interrompe o pregão da Bolsa em quedas bruscas.', 'hard');

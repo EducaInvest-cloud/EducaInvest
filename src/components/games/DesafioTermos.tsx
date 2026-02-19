@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock, RefreshCw, CheckCircle2, XCircle, HelpCircle } from "lucide-react";
-import { gameService, GameQuestion } from "@/services/gameService";
+import { ArrowLeft, Clock, RefreshCw, CheckCircle2, XCircle, Zap, Sparkles } from "lucide-react"; // Zap for Combo
+import { gameService } from "@/services/gameService";
 import { formatNumber, cn } from "@/lib/utils";
 import { GameHelp } from "./GameHelp";
 
@@ -25,12 +25,13 @@ interface GameItem {
     type: 'term' | 'def';
 }
 
+// Cores mais vibrantes e modernas para os matches
 const MATCH_STYLES = [
-    { bg: "bg-emerald-500/10", border: "border-emerald-500/30", text: "text-emerald-400", glow: "shadow-[0_0_20px_rgba(16,185,129,0.2)]" },
-    { bg: "bg-indigo-500/10", border: "border-indigo-500/30", text: "text-indigo-400", glow: "shadow-[0_0_20px_rgba(99,102,241,0.2)]" },
-    { bg: "bg-violet-500/10", border: "border-violet-500/30", text: "text-violet-400", glow: "shadow-[0_0_20px_rgba(139,92,246,0.2)]" },
-    { bg: "bg-orange-500/10", border: "border-orange-500/30", text: "text-orange-400", glow: "shadow-[0_0_20px_rgba(249,115,22,0.2)]" },
-    { bg: "bg-sky-500/10", border: "border-sky-500/30", text: "text-sky-400", glow: "shadow-[0_0_20px_rgba(14,165,233,0.2)]" },
+    { bg: "bg-emerald-500/20", border: "border-emerald-500/50", text: "text-emerald-300", glow: "shadow-[0_0_30px_rgba(16,185,129,0.3)]" },
+    { bg: "bg-blue-500/20", border: "border-blue-500/50", text: "text-blue-300", glow: "shadow-[0_0_30px_rgba(59,130,246,0.3)]" },
+    { bg: "bg-purple-500/20", border: "border-purple-500/50", text: "text-purple-300", glow: "shadow-[0_0_30px_rgba(168,85,247,0.3)]" },
+    { bg: "bg-amber-500/20", border: "border-amber-500/50", text: "text-amber-300", glow: "shadow-[0_0_30px_rgba(245,158,11,0.3)]" },
+    { bg: "bg-pink-500/20", border: "border-pink-500/50", text: "text-pink-300", glow: "shadow-[0_0_30px_rgba(236,72,153,0.3)]" },
 ];
 
 export const DesafioTermos = ({ onBack, user }: Props) => {
@@ -46,6 +47,8 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [score, setScore] = useState(0);
     const [xpSaved, setXpSaved] = useState(false);
+    const [combo, setCombo] = useState(0); // Combo multiplier
+    const [maxCombo, setMaxCombo] = useState(0);
 
     const scoreRef = useRef(0);
     const xpSavedRef = useRef(false);
@@ -74,7 +77,7 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
         return () => clearInterval(timer);
     }, [isPlaying, timeLeft]);
 
-    const isGameOver = timeLeft === 0 || matchedIds.length === items.terms.length;
+    const isGameOver = timeLeft === 0 || (items.terms.length > 0 && matchedIds.length === items.terms.length);
 
     useEffect(() => {
         if (!isPlaying && isGameOver && score > 0 && !xpSaved) {
@@ -92,10 +95,23 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
             const defId = parseInt(selectedDef.split('-')[1]);
 
             if (termId === defId) {
+                // MATCH!
                 const colorIndex = matchedIds.length % MATCH_STYLES.length;
                 setMatchedColors(prev => ({ ...prev, [termId]: colorIndex }));
                 setMatchedIds(prev => [...prev, termId]);
-                setScore(s => s + 10 + Math.floor(timeLeft / 2));
+
+                // Score Calculation: Base 15 + Time Bonus + Combo Bonus
+                const basePoints = 15;
+                const timeBonus = Math.floor(timeLeft / 3);
+                const comboBonus = combo * 5;
+
+                setScore(s => s + basePoints + timeBonus + comboBonus);
+                setCombo(c => {
+                    const newCombo = c + 1;
+                    if (newCombo > maxCombo) setMaxCombo(newCombo);
+                    return newCombo;
+                });
+
                 setSelectedTerm(null);
                 setSelectedDef(null);
 
@@ -104,16 +120,20 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
                 localStorage.setItem('termoStats', JSON.stringify(stats));
 
                 if (matchedIds.length + 1 === items.terms.length) {
-                    setIsPlaying(false);
+                    setIsPlaying(false); // Victory
                     if (timeLeft > stats.bestTimeLeft) {
                         stats.bestTimeLeft = timeLeft;
                         localStorage.setItem('termoStats', JSON.stringify(stats));
                     }
                 }
             } else {
+                // MISMATCH
                 if (navigator.vibrate) navigator.vibrate(200);
 
                 setMismatchPairs([selectedTerm, selectedDef]);
+                setCombo(0); // Reset combo
+                setScore(s => Math.max(0, s - 5)); // Penalty for wrong guess
+
                 const t = setTimeout(() => {
                     setMismatchPairs([]);
                     setSelectedTerm(null);
@@ -128,7 +148,8 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
         setIsLoading(true);
         try {
             const data = await gameService.getTermPairs();
-            const selected = data.sort(() => Math.random() - 0.5).slice(0, 5);
+            // Select 6 pairs for better grid layout (2x3 or 3x2)
+            const selected = data.sort(() => Math.random() - 0.5).slice(0, 6);
 
             const terms: GameItem[] = selected.map(q => ({
                 id: `term-${q.id}`,
@@ -149,9 +170,11 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
             setMatchedColors({});
             setScore(0);
             setTimeLeft(60);
+            setCombo(0);
             setIsPlaying(true);
             setSelectedTerm(null);
             setSelectedDef(null);
+            setXpSaved(false);
         } catch (e) {
             console.error(e);
         } finally {
@@ -162,8 +185,8 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
     if (isLoading) {
         return (
             <div className="flex flex-col h-full min-h-[500px] items-center justify-center text-white">
-                <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mb-4" />
-                <p>Preparando termos...</p>
+                <div className="animate-spin w-10 h-10 border-4 border-primary border-t-transparent rounded-full mb-4" />
+                <p className="animate-pulse">Sorteando desafios...</p>
             </div>
         );
     }
@@ -171,19 +194,38 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
     if (isGameOver && !isPlaying) {
         const isWin = matchedIds.length === items.terms.length;
         return (
-            <div className="flex flex-col h-full min-h-[500px] items-center justify-center text-center p-6 text-white">
-                <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${isWin ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+            <div className="flex flex-col h-full min-h-[500px] items-center justify-center text-center p-6 text-white animate-in zoom-in duration-300">
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-6 shadow-2xl ${isWin ? 'bg-emerald-500/20 text-emerald-400 border-4 border-emerald-500/30' : 'bg-red-500/20 text-red-400 border-4 border-red-500/30'}`}>
                     {isWin ? <CheckCircle2 className="w-12 h-12" /> : <XCircle className="w-12 h-12" />}
                 </div>
-                <h2 className="text-3xl font-bold mb-4">{isWin ? "Mestre dos Termos!" : "Tempo Esgotado!"}</h2>
-                <p className="text-xl mb-6 text-muted-foreground tabular-nums">
-                    Você acumulou <span className="text-primary font-bold">{formatNumber(score)}</span> pontos de experiência.
-                </p>
-                <div className="flex gap-4 w-full max-w-xs">
-                    <Button onClick={loadGame} className="flex-1 gap-2" size="lg">
-                        <RefreshCw className="w-4 h-4" /> Jogar
+
+                <h2 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+                    {isWin ? "Mestre dos Termos!" : "Tempo Esgotado!"}
+                </h2>
+
+                {isWin && maxCombo > 1 && (
+                    <div className="mb-6 flex items-center gap-2 justify-center text-amber-400 font-bold bg-amber-400/10 px-4 py-1 rounded-full border border-amber-400/20">
+                        <Zap className="w-4 h-4 fill-current" />
+                        Maior Combo: x{maxCombo}
+                    </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 mb-8 w-full max-w-xs">
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                        <p className="text-xs text-muted-foreground uppercase font-bold">XP Ganho</p>
+                        <p className="text-2xl font-black text-primary">+{formatNumber(score)}</p>
+                    </div>
+                    <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+                        <p className="text-xs text-muted-foreground uppercase font-bold">Acertos</p>
+                        <p className="text-2xl font-black text-white">{matchedIds.length}/{items.terms.length}</p>
+                    </div>
+                </div>
+
+                <div className="flex gap-4 w-full max-w-sm">
+                    <Button onClick={loadGame} className="flex-1 gap-2 h-12 text-lg shadow-lg shadow-primary/20" size="lg">
+                        <RefreshCw className="w-5 h-5" /> Jogar Novamente
                     </Button>
-                    <Button onClick={onBack} variant="outline" size="lg" className="flex-1">
+                    <Button onClick={onBack} variant="outline" size="lg" className="flex-1 h-12 border-white/20 hover:bg-white/10">
                         Sair
                     </Button>
                 </div>
@@ -192,48 +234,74 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
     }
 
     return (
-        <div className="flex flex-col h-full min-h-[500px] max-w-4xl mx-auto px-4">
+        <div className="flex flex-col h-full min-h-[600px] max-w-5xl mx-auto px-4 py-6">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" onClick={onBack} size="sm" className="gap-2 text-white/70 hover:text-white hover:bg-white/10" aria-label="Sair do jogo">
-                        <ArrowLeft className="w-4 h-4" /> Sair
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" onClick={onBack} size="icon" className="text-white/70 hover:text-white hover:bg-white/10 rounded-full w-10 h-10">
+                        <ArrowLeft className="w-5 h-5" />
                     </Button>
-                    <GameHelp>
-                        <p>
-                            Conecte os conceitos bancários e financeiros às suas definições corretas o mais rápido possível!
-                            Selecione um termo de um lado e sua definição do outro.
-                            Ganhe bônus de <span className="text-amber-400">tempo</span> ao acertar rapidamente.
-                        </p>
-                    </GameHelp>
-                </div>
-                <div className="flex items-center gap-6">
-                    <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border-2 transition-colors ${timeLeft < 10 ? 'border-red-500/50 bg-red-500/10 text-red-400 animate-pulse' : 'border-white/10 bg-white/5 text-white'}`}>
-                        <Clock className="w-4 h-4" />
-                        <span className="font-mono font-bold text-lg">{timeLeft}s</span>
+                    <div>
+                        <h2 className="font-display font-bold text-xl text-white">Desafio dos Termos</h2>
+                        <p className="text-xs text-muted-foreground hidden md:block">Conecte os conceitos corretamente</p>
                     </div>
-                    <div className="flex flex-col items-end">
-                        <span className="text-[10px] uppercase font-black text-muted-foreground leading-none">Score</span>
-                        <div className="text-primary font-black text-2xl tabular-nums">
-                            {formatNumber(score)} <span className="text-xs">XP</span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    {/* Combo Indicator */}
+                    <AnimatePresence>
+                        {combo > 1 && (
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                className="hidden md:flex flex-col items-center mr-4"
+                            >
+                                <span className="text-amber-400 text-2xl font-black italic flex items-center gap-1 drop-shadow-[0_0_10px_rgba(245,158,11,0.5)]">
+                                    <Zap className="w-5 h-5 fill-current animate-pulse" /> x{combo}
+                                </span>
+                                <span className="text-[10px] uppercase font-bold text-amber-400/80 tracking-widest">Combo</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Timer */}
+                    <div className={`relative flex items-center justify-center w-14 h-14 rounded-2xl border-2 transition-all shadow-lg ${timeLeft < 10
+                            ? 'border-red-500 bg-red-500/20 text-red-500 shadow-red-500/20 animate-pulse'
+                            : 'border-white/10 bg-slate-800 text-white shadow-black/20'
+                        }`}>
+                        <div className="flex flex-col items-center">
+                            <span className="text-xl font-bold font-mono leading-none">{timeLeft}</span>
+                            <span className="text-[8px] uppercase font-bold opacity-60">Seg</span>
                         </div>
+                        {/* Progress Ring could go here */}
+                    </div>
+
+                    {/* Score */}
+                    <div className="bg-primary/10 border border-primary/20 px-4 py-2 rounded-2xl flex flex-col items-end min-w-[100px]">
+                        <span className="text-[10px] uppercase font-bold text-primary/60">XP Total</span>
+                        <span className="text-2xl font-black text-primary leading-none tabular-nums">{score}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Game Board */}
-            <div className="flex-1 grid grid-cols-2 gap-6 md:gap-12 relative overflow-y-auto pr-2 
-                [&::-webkit-scrollbar]:w-1.5
-                [&::-webkit-scrollbar-track]:bg-transparent
-                [&::-webkit-scrollbar-thumb]:bg-white/10
-                [&::-webkit-scrollbar-thumb]:rounded-full">
+            {/* Game Board - Responsive Grid */}
+            <div className="flex-1 grid grid-cols-2 gap-4 md:gap-8 lg:gap-12 relative">
+
+                {/* Column Headers */}
+                <div className="col-span-1 flex items-center justify-center mb-2 md:mb-0">
+                    <div className="bg-slate-800/80 backdrop-blur px-4 py-1 rounded-full border border-white/5 text-xs font-bold uppercase tracking-widest text-slate-400 shadow-sm">
+                        Termos
+                    </div>
+                </div>
+                <div className="col-span-1 flex items-center justify-center mb-2 md:mb-0">
+                    <div className="bg-slate-800/80 backdrop-blur px-4 py-1 rounded-full border border-white/5 text-xs font-bold uppercase tracking-widest text-slate-400 shadow-sm">
+                        Definições
+                    </div>
+                </div>
 
                 {/* Terms Column */}
-                <div className="flex flex-col gap-4 py-2">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-1.5 h-4 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
-                        <span className="text-xs uppercase font-black tracking-widest text-amber-400">Termos</span>
-                    </div>
+                <div className="flex flex-col gap-3 md:gap-4">
                     {items.terms.map(term => {
                         const isMatched = matchedIds.includes(term.originalId);
                         const isSelected = selectedTerm === term.id;
@@ -244,55 +312,30 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
                         return (
                             <motion.button
                                 key={term.id}
+                                layoutId={term.id}
                                 className={cn(
-                                    "p-5 rounded-2xl text-base md:text-lg font-bold text-center transition-all relative border min-h-[90px] flex items-center justify-center backdrop-blur-md overflow-hidden",
+                                    "w-full p-4 md:p-6 rounded-2xl text-sm md:text-lg font-bold text-center transition-all relative border min-h-[80px] md:min-h-[100px] flex items-center justify-center backdrop-blur-md overflow-hidden group",
                                     isMatched && matchStyle
-                                        ? `${matchStyle.bg} ${matchStyle.border} ${matchStyle.text} ${matchStyle.glow} cursor-default`
+                                        ? `${matchStyle.bg} ${matchStyle.border} ${matchStyle.text} ${matchStyle.glow} opacity-50 grayscale-[0.5] scale-[0.98]`
                                         : isMismatch
-                                            ? "bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                                            ? "bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.3)] shake" // Add shake class globally or animate in motion
                                             : isSelected
-                                                ? "bg-primary/30 border-primary text-white shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)] ring-1 ring-primary/50"
-                                                : "bg-white/[0.03] border-white/10 text-white hover:border-amber-500/40 hover:bg-white/[0.08] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] shadow-lg"
+                                                ? "bg-primary text-white border-primary shadow-[0_0_20px_rgba(var(--primary-rgb),0.5)] scale-[1.02] z-10"
+                                                : "bg-slate-800/50 border-white/10 text-white hover:bg-slate-700/80 hover:border-white/20 hover:shadow-lg hover:-translate-y-0.5"
                                 )}
                                 onClick={() => !isMatched && isPlaying && setSelectedTerm(term.id)}
                                 disabled={isMatched || !isPlaying}
-                                whileHover={!isMatched && isPlaying ? { x: -5, scale: 1.02 } : {}}
-                                whileTap={!isMatched && isPlaying ? { scale: 0.98 } : {}}
+                                animate={isMismatch ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                             >
-                                {/* Selection Glow Effect */}
-                                {isSelected && !isMatched && (
-                                    <motion.div
-                                        layoutId="glow-term"
-                                        className="absolute inset-0 bg-gradient-to-l from-primary/20 to-transparent pointer-events-none"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                    />
-                                )}
-
                                 <span className="relative z-10">{term.text}</span>
-
-                                <AnimatePresence>
-                                    {isMatched && (
-                                        <motion.div
-                                            initial={{ scale: 0, opacity: 0, rotate: -45 }}
-                                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2"
-                                        >
-                                            <CheckCircle2 className={cn("w-5 h-5", matchStyle ? matchStyle.text : "text-emerald-400/60")} />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </motion.button>
                         )
                     })}
                 </div>
 
                 {/* Definitions Column */}
-                <div className="flex flex-col gap-4 py-2">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-xs uppercase font-black tracking-widest text-emerald-400">Definições</span>
-                    </div>
+                <div className="flex flex-col gap-3 md:gap-4">
                     {items.defs.map(def => {
                         const isMatched = matchedIds.includes(def.originalId);
                         const isSelected = selectedDef === def.id;
@@ -303,52 +346,41 @@ export const DesafioTermos = ({ onBack, user }: Props) => {
                         return (
                             <motion.button
                                 key={def.id}
+                                layoutId={def.id}
                                 className={cn(
-                                    "p-5 rounded-2xl text-sm md:text-base font-medium text-left transition-all relative border min-h-[90px] flex items-center group backdrop-blur-md overflow-hidden",
+                                    "w-full p-4 md:p-6 rounded-2xl text-xs md:text-base font-medium text-left transition-all relative border min-h-[80px] md:min-h-[100px] flex items-center backdrop-blur-md overflow-hidden group",
                                     isMatched && matchStyle
-                                        ? `${matchStyle.bg} ${matchStyle.border} ${matchStyle.text} ${matchStyle.glow} cursor-default`
+                                        ? `${matchStyle.bg} ${matchStyle.border} ${matchStyle.text} ${matchStyle.glow} opacity-50 grayscale-[0.5] scale-[0.98]`
                                         : isMismatch
-                                            ? "bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)]"
+                                            ? "bg-red-500/20 border-red-500/50 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.3)]"
                                             : isSelected
-                                                ? "bg-primary/30 border-primary text-white shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)] ring-1 ring-primary/50"
-                                                : "bg-white/[0.03] border-white/10 text-slate-300 hover:border-emerald-500/40 hover:bg-white/[0.08] hover:shadow-[0_8px_32px_rgba(0,0,0,0.3)] shadow-lg"
+                                                ? "bg-primary/20 border-primary text-white shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] scale-[1.02] z-10"
+                                                : "bg-slate-800/50 border-white/10 text-slate-300 hover:bg-slate-700/80 hover:border-white/20 hover:shadow-lg hover:-translate-y-0.5"
                                 )}
                                 onClick={() => !isMatched && isPlaying && setSelectedDef(def.id)}
                                 disabled={isMatched || !isPlaying}
-                                whileHover={!isMatched && isPlaying ? { x: 5, scale: 1.02 } : {}}
-                                whileTap={!isMatched && isPlaying ? { scale: 0.98 } : {}}
+                                animate={isMismatch ? { x: [-5, 5, -5, 5, 0] } : {}}
+                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                             >
-                                {/* Selection Glow Effect */}
-                                {isSelected && !isMatched && (
-                                    <motion.div
-                                        layoutId="glow-def"
-                                        className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent pointer-events-none"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                    />
+                                <span className="relative z-10">{def.text}</span>
+                                {isMatched && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <CheckCircle2 className="w-5 h-5 opacity-50" />
+                                    </div>
                                 )}
-
-                                <span className="relative z-10 leading-relaxed">{def.text}</span>
-
-                                <AnimatePresence>
-                                    {isMatched && (
-                                        <motion.div
-                                            initial={{ scale: 0, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2"
-                                        >
-                                            <div className={cn("w-6 h-6 rounded-full flex items-center justify-center border",
-                                                matchStyle ? `bg-white/10 ${matchStyle.border.replace('border-', 'border-')}` : "bg-emerald-500/20 border-emerald-500/30")}>
-                                                <CheckCircle2 className={cn("w-4 h-4", matchStyle ? matchStyle.text : "text-emerald-400")} />
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </motion.button>
                         )
                     })}
                 </div>
             </div>
+
+            {/* Combo/Hint area or footer */}
+            <div className="mt-4 text-center">
+                <p className="text-xs text-white/30 italic">
+                    Dica: Acertos consecutivos (Combo) multiplicam seus pontos!
+                </p>
+            </div>
         </div>
     );
 };
+
