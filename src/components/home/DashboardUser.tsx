@@ -30,7 +30,7 @@ export function DashboardUser({ user, perfil }: { user: any; perfil: any; progre
         .from('lessons')
         .select('id, title_short, description')
         .eq('id', lastId + 1)
-        .single();
+        .maybeSingle();
 
       setNextLesson(lesson || null);
       setLoading(false);

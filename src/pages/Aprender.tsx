@@ -47,19 +47,27 @@ export default function Aprender() {
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user);
 
+        // Helper to validate UUID
+        const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        const userId = session?.user?.id;
+
+        if (userId && !isValidUUID(userId)) {
+          console.error("Aprender: Invalid UUID detected for user:", userId);
+        }
+
         const [lessonsResult, termsResult, progressResult, perfilResult] = await Promise.all([
           supabase.from('lessons').select('*').order('order_index', { ascending: true }),
           supabase.from('terms').select('*'),
-          session?.user
+          (userId && isValidUUID(userId))
             ? supabase.from('user_progress')
               .select('lesson_id')
-              .eq('user_id', session.user.id)
+              .eq('user_id', userId)
               .eq('is_completed', true)
             : Promise.resolve({ data: null }),
-          session?.user
+          (userId && isValidUUID(userId))
             ? supabase.from('perfis')
               .select('is_admin')
-              .eq('id', session.user.id)
+              .eq('id', userId)
               .single()
             : Promise.resolve({ data: null })
         ]);
