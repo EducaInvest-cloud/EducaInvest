@@ -79,15 +79,7 @@ export function LessonContent({
             <header className="sticky top-0 z-20 bg-slate-950/80 backdrop-blur-md border-b border-white/5 px-4 py-3">
                 <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="hidden lg:flex shrink-0 w-8 h-8 rounded-full hover:bg-white/10"
-                            onClick={() => handleLessonChange(currentAulaId - 1)}
-                            disabled={currentAulaId === 1}
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                        </Button>
+
 
                         <div className="flex flex-col gap-1 min-w-0">
                             <h2 className="text-sm font-medium text-slate-400 truncate flex items-center gap-2">
