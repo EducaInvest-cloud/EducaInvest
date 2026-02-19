@@ -15,7 +15,7 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
   // Determina qual ação destacar baseado no progresso
   const getRecommendedAction = () => {
     if (!userLoggedIn || !progress) return "aprender";
-    
+
     if (progress.percentage < 30) return "aprender";
     if (progress.percentage < 70) return "simular";
     return "praticar";
@@ -27,15 +27,15 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
     {
       title: "Sou Iniciante",
       subtitle: "Quero Aprender",
-      description: userLoggedIn 
+      description: userLoggedIn
         ? `Continue sua jornada! ${progress?.completed || 0} aulas concluídas.`
         : "Comece do zero com explicações simples e exemplos práticos do dia a dia.",
       icon: BookOpen,
       path: "/aprender",
       gradient: "bg-gradient-hero",
       iconBg: "bg-primary/20",
-      badge: userLoggedIn && progress && progress.percentage > 0 
-        ? `${progress.percentage}% completo` 
+      badge: userLoggedIn && progress && progress.percentage > 0
+        ? `${progress.percentage}% completo`
         : null,
       recommended: recommendedPath === "aprender",
     },
@@ -54,7 +54,7 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
     },
     {
       title: "Quero me divertir",
-      subtitle: "Quero Praticar", 
+      subtitle: "Quero Praticar",
       description: userLoggedIn && progress && progress.percentage >= 70
         ? "Domine o mercado com jogos educativos avançados!"
         : "Aprenda brincando com jogos educativos sobre investimentos.",
@@ -71,7 +71,7 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
     <section className="py-16 md:py-20 relative">
       {/* Background decorativo */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent pointer-events-none" />
-      
+
       <div className="container mx-auto px-4 relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -81,8 +81,8 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
           className="text-center mb-12"
         >
           <h2 className="font-display text-2xl md:text-3xl font-bold mb-4">
-            {userLoggedIn 
-              ? "Continue sua jornada de aprendizado" 
+            {userLoggedIn
+              ? "Continue sua jornada de aprendizado"
               : "Por onde você quer começar?"}
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
@@ -106,16 +106,15 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
               >
                 <Link to={action.path}>
                   <motion.div
-                    className={`group relative bg-card rounded-2xl p-6 border shadow-md hover:shadow-xl transition-all duration-300 h-full ${
-                      isRecommended
+                    className={`group relative bg-card rounded-2xl p-6 border shadow-md hover:shadow-xl transition-all duration-300 h-full ${isRecommended
                         ? "border-primary/50 ring-2 ring-primary/20"
                         : "border-border"
-                    }`}
+                      }`}
                     whileHover={{ y: -4 }}
                   >
                     {/* Gradient accent top */}
                     <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-2xl ${action.gradient}`} />
-                    
+
                     {/* Badge de Recomendado */}
                     {isRecommended && (
                       <div className="absolute -top-3 right-4 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
@@ -130,7 +129,7 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
                         {action.badge}
                       </div>
                     )}
-                    
+
                     {/* Icon */}
                     <div className={`w-14 h-14 rounded-xl ${action.iconBg} flex items-center justify-center mb-4`}>
                       <action.icon className="w-7 h-7 text-foreground" />
@@ -177,7 +176,7 @@ export function QuickActions({ userLoggedIn = false, progress }: QuickActionsPro
             <p className="text-sm text-muted-foreground">
               {progress.percentage < 30 && "🚀 Continue aprendendo para evoluir ainda mais!"}
               {progress.percentage >= 30 && progress.percentage < 70 && "🎯 Você está progredindo muito bem! Continue assim."}
-              {progress.percentage >= 70 && "🎉 Incrível! Você dominou a maior parte do conteúdo!"}
+
             </p>
           </motion.div>
         )}
