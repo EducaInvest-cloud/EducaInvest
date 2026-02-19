@@ -38,69 +38,144 @@ BEGIN
     END IF;
 END $$;
 
--- 5. Migrar dados antigos (se existirem na tabela antiga game_questions)
--- Consultor
-INSERT INTO public.consultor_questions (text, type, explanation, icon, difficulty)
-SELECT 
-    content->>'text',
-    content->>'type',
-    content->>'explanation',
-    content->>'icon',
-    difficulty
-FROM public.game_questions 
-WHERE game_type = 'consultor';
+-- 5. Migrar dados antigos (ADAPTADOS COM NOVAS EXPLICAÇÕES)
+-- Nota: Como estamos reescrevendo as explicações para serem mais educativas, 
+-- vamos inserir os dados diretamente em vez de copiar do antigo jsonb de forma bruta,
+-- ou filtrar para garantir que não duplicamos se rodar 2x.
 
--- Termos
-INSERT INTO public.term_questions (term, definition, difficulty)
-SELECT 
-    content->>'term',
-    content->>'definition',
-    difficulty
-FROM public.game_questions 
-WHERE game_type = 'termo';
+-- Limpar tabelas novas para garantir inserção limpa das novas versões educativas
+TRUNCATE TABLE public.consultor_questions RESTART IDENTITY;
+TRUNCATE TABLE public.term_questions RESTART IDENTITY;
 
--- 6. Adicionar as 35 Novas Perguntas para O CONSULTOR (Totalizando 50 com as 15 antigas)
+-- Inserir Perguntas O CONSULTOR (50 Cenários Educativos)
+
 INSERT INTO public.consultor_questions (text, type, explanation, icon, difficulty) VALUES
--- Dificuldade: FÁCIL (Conceitos Básicos e Golpes Óbvios)
-('Recebi um link no WhatsApp prometendo R$ 100 se encaminhar para 10 amigos. Devo clicar?', 'bad', 'Golpe de Phishing! Nenhuma empresa séria dá dinheiro em troca de spam. Você pode ter seus dados roubados.', '🎣', 'easy'),
-('Pagar a fatura total do cartão de crédito ou pagar o mínimo e investir o resto?', 'good', 'Pague o total! Os juros do rotativo do cartão são absurdamente altos (mais de 300% ao ano), nenhum investimento supera isso.', '💳', 'easy'),
-('Guardar dinheiro embaixo do colchão para não pagar taxas. É seguro?', 'bad', 'Péssima ideia! A inflação corrói o valor do seu dinheiro e você corre risco de roubo ou perda física.', '🛏️', 'easy'),
-('Emprestar seu nome para um amigo negativado comprar um carro financiado. Ajudo?', 'bad', 'Alto risco! Se ele não pagar, a dívida é 100% sua, sujando seu nome e comprometendo seu crédito.', '🚫', 'easy'),
-('Começar a investir com apenas R$ 30,00 no Tesouro Direto. Vale a pena?', 'good', 'Com certeza! O importante é criar o hábito. O tempo é o maior aliado dos juros compostos.', '🌱', 'easy'),
-('Comprar um smartphone topo de linha parcelado em 24x sem juros, mas sem desconto à vista.', 'bad', 'Cuidado! Parcelas longas comprometem sua renda futura. Tente juntar e negociar desconto à vista.', '📱', 'easy'),
-('O banco ofereceu aumentar meu limite do cheque especial. Devo usar como renda extra?', 'bad', 'Jamais! O cheque especial não é renda, é uma dívida com juros altíssimo. Use apenas em extrema emergência.', '🆘', 'easy'),
-('Anotar todos os meus gastos diários, até o cafezinho. Preciso mesmo disso?', 'good', 'Hábito de Ouro! Saber para onde vai seu dinheiro é o primeiro passo para assumir o controle financeiro.', '📝', 'easy'),
-('Investir em ações de uma empresa só porque um influenciador falou que "vai explodir".', 'bad', 'Efeito Manada! Influenciadores podem ter incentivos ocultos. Analise a empresa ou siga analistas certificados.', '🗣️', 'easy'),
-('Deixar o dinheiro parado na Conta Corrente sem rendimento automático.', 'bad', 'Perda de dinheiro! A inflação faz seu saldo valer menos todo dia. Busque contas com rendimento automático (100% do CDI).', '📉', 'easy'),
 
--- Dificuldade: MÉDIO (Produtos Bancários e Estratégias)
-('Fazer um consórcio para comprar carro porque "não tem juros". É vantajoso?', 'bad', 'Não tem juros, mas tem Taxa de Administração! Muitas vezes investir o dinheiro rende mais que pagar as taxas do consórcio.', '🤝', 'medium'),
-('Comprar dólar em espécie todo mês para se proteger da crise no Brasil.', 'good', 'Estratégia válida! Ter parte do patrimônio em moeda forte (Dólar/Euro) protege seu poder de compra global.', '💵', 'medium'),
-('Aceitar o "Seguro Prestamista" empurrado pelo gerente ao fazer um empréstimo.', 'bad', 'Venda Casada! Você não é obrigado a contratar. Avalie se realmente precisa dessa proteção antes de assinar.', '🏦', 'medium'),
-('Investir em Fundos Multimercado para buscar rentabilidade acima do CDI.', 'good', 'Boa diversificação! Fundos multimercado podem ganhar com juros, dólar e bolsa, mas exigem pesquisa dos gestores.', '📊', 'medium'),
-('Trocar de carro todo ano para não ter manutenção.', 'bad', 'Custo invisível alto! A desvalorização do veiculo novo é maior no primeiro ano e os custos de troca (documentação) são altos.', '🚗', 'medium'),
-('Aportar na Previdência Privada (PGBL) para abater Imposto de Renda.', 'good', 'Inteligente! Se você faz declaração completa, o PGBL permite deduzir até 12% da renda bruta anual.', '👴', 'medium'),
-('Vender suas férias (10 dias) para pagar dívidas de juros altos.', 'good', 'Decisão Racional! Trocar descanso por liberdade financeira faz sentido se for para eliminar juros abusivos.', '🏖️', 'medium'),
-('Comprar ações fracionadas (Lote de 1 a 99) porque não tem dinheiro para o lote padrão.', 'good', 'Acessibilidade! O mercado fracionário permite pequenos investidores serem sócios de grandes empresas.', '🍰', 'medium'),
-('Assinar 5 serviços de streaming que eu quase não assisto.', 'bad', 'Gasto Fantasma! Cancele o que não usa. R$ 50/mês investidos por 30 anos viram uma pequena fortuna.', '📺', 'medium'),
-('Investir em Debêntures Incentivadas para não pagar Imposto de Renda.', 'good', 'Boa isenção! Debêntures de infraestrutura são isentas de IR para pessoa física e costumam pagar bem (IPCA+).', 'bridge', 'medium'),
-('Usar o 13º salário inteiro para comprar presentes de Natal.', 'bad', 'Planejamento ruim! O 13º deve ser usado prioritariamente para pagar dívidas, IPVA/IPTU ou investir.', '🎁', 'medium'),
-('Antecipar a restituição do Imposto de Renda pelo banco.', 'bad', 'Cuidado! Isso é um empréstimo com juros. Espere a Receita pagar, a não ser que precise muito do dinheiro.', '🦁', 'medium'),
+-- === Dificuldade: FÁCIL (Conceitos Básicos) ===
 
--- Dificuldade: DIFÍCIL (Conceitos Avançados e Armadilhas Sutis)
-('Alugar Ações (Doador) para ganhar uma taxa extra na carteira de longo prazo.', 'good', 'Renda Extra! Se você não pretende vender as ações, alugá-las gera uma taxa pequena sem perder os dividendos.', '🤝', 'hard'),
-('Fazer "Preço Médio" comprando mais ações de uma empresa que perdeu seus fundamentos.', 'bad', 'Ancoragem! Não jogue dinheiro bom em negócio ruim. Se a empresa piorou, o barato pode sair caro.', '⚓', 'hard'),
-('Investir em ETFs (Fundo de Índice) em vez de escolher ações individuais (Stock Picking).', 'good', 'Eficiência! A maioria dos gestores não bate o índice. ETFs garantem diversificação e baixo custo.', '🌐', 'hard'),
-('Operar Opções sem conhecimento para tentar "alavancar" os ganhos.', 'bad', 'Cemitério de Malandro! Derivativos têm risco de perda total (virar pó). Estude muito antes ou use apenas para proteção (Hedge).', '💣', 'hard'),
-('Resgatar o investimento antes do vencimento (Marcação a Mercado).', 'bad', 'Perda provável! Na Renda Fixa, sair antes pode dar prejuízo se os juros subiram. Leve até o vencimento para garantir a taxa contratada.', '📅', 'hard'),
-('Ter criptomoedas em uma "Cold Wallet" (carteira física) em vez de deixar na corretora.', 'good', 'Segurança Máxima! "Not your keys, not your coins". Corretoras podem ser hackeadas ou falir.', '🔐', 'hard'),
-('Ignorar a inflação e olhar apenas para o rendimento nominal.', 'bad', 'Ilusão Monetária! O que importa é o Ganho Real (Juros - Inflação). 10% de ganho com 10% de inflação é zero.', '🎈', 'hard'),
-('Contratar um Consultor Financeiro Independente (CFP) pago, em vez do assessor "gratuito" da corretora.', 'good', 'Isenção! O consultor pago trabalha para VOCÊ. O "gratuito" ganha comissão dos produtos que te vende (conflito de interesses).', '🧑‍💼', 'hard'),
-('Acreditar que "Imóvel nunca desvaloriza".', 'bad', 'Mito! Bairros degradam, liquidez é baixa e custos de vacância existem. Imóveis podem sim perder valor real.', '🏚️', 'hard'),
-('Usar a regra dos 50-30-20 para dividir o orçamento (Essenciais, Desejos, Investimentos).', 'good', 'Equilíbrio! Uma das melhores regras práticas para manter a saúde financeira sem viver na miséria.', '⚖️', 'hard'),
-('Investir em empresas ESG (Ambiental, Social e Governança) visando sustentabilidade.', 'good', 'Tendência Global! Empresas responsáveis tendem a ter menos riscos jurídicos e melhor imagem no longo prazo.', '♻️', 'hard'),
-('Manter todo o patrimônio no Brasil (Risco Brasil).', 'bad', 'Concentração de Risco! Tenha parte do patrimônio no exterior para se proteger de crises políticas/econômicas locais.', '🇧🇷', 'hard'),
-('Fazer seguro do carro apenas contra roubo e furto, ignorando terceiros.', 'bad', 'Economia Porca! Se você bater em um carro de luxo, a dívida pode acabar com seu patrimônio. Tenha cobertura para terceiros.', '💥', 'hard');
+-- Golpes / Pirâmides
+('Investimento com retorno garantido de 10% ao mês. É uma oportunidade única ou golpe?', 'bad', 'Isso é insustentável! A taxa básica de juros (Selic) raramente passa de 1% ao mês. Retornos fixos altíssimos são a marca registrada de pirâmides financeiras: pagam os antigos com o dinheiro dos novos até quebrarem.', '🚀', 'easy'),
 
--- 7. (Opcional) Dropar a tabela antiga se quiser limpar, ou manter como backup
--- DROP TABLE public.game_questions;
+('Recebi um link no WhatsApp prometendo R$ 100 se encaminhar para 10 amigos. Devo clicar?', 'bad', 'Golpe de Phishing! Empresas sérias não dão dinheiro em troca de spam. Ao clicar, você instala vírus que roubam suas senhas bancárias e espalham o golpe para seus contatos.', '🎣', 'easy'),
+
+-- Dívidas e Juros
+('Pegar um empréstimo com juros de 8% ao mês para comprar roupas novas. Faz sentido?', 'bad', 'Nunca! Juros de 8% ao mês viram mais de 150% ao ano. Você pagará o dobro ou triplo do valor das roupas. Dívida só se justifica (se muito necessária) para ativos que geram renda ou valor, nunca para consumo.', '💸', 'easy'),
+
+('Pagar a fatura total do cartão de crédito ou pagar o mínimo e investir o resto?', 'good', 'Pague o total sempre! O "rotativo" do cartão cobra juros de 300-400% ao ano. Nenhum investimento rende isso. Pagar o mínimo cria uma bola de neve de dívidas impagável.', '💳', 'easy'),
+
+('O mercado caiu hoje! Devo vender todas as minhas ações para evitar mais perdas?', 'bad', 'Vender na baixa consolida o prejuízo! Ações oscilam. Se a empresa continua boa, a queda é uma oportunidade de compra (promoção), não de venda. O investidor ganha no longo prazo, não no desespero diário.', '📉', 'easy'),
+
+-- Hábitos Básicos
+('Guardar dinheiro embaixo do colchão para não pagar taxas. É seguro?', 'bad', 'A inflação corrói seu dinheiro! R$ 100 hoje compram muito menos que R$ 100 daqui a um ano. Além do risco físico (roubo/fogo), dinheiro parado perde poder de compra. Invista para vencer a inflação.', '🛏️', 'easy'),
+
+('Aplicar a Reserva de Emergência no Tesouro Selic é uma boa opção?', 'good', 'Perfeito! A Reserva precisa de duas coisas: Segurança (não perder valor) e Liquidez (sacar a qualquer hora). O Tesouro Selic oferece ambos, rendendo mais que a poupança.', '🛡️', 'easy'),
+
+('Anotar todos os meus gastos diários, até o cafezinho. Preciso mesmo disso?', 'good', 'A consciência é o primeiro passo! Pequenos gastos invisíveis (efeito latte) podem somar milhares de reais no ano. Você não precisa cortar tudo, mas precisa saber para onde seu dinheiro está indo.', '📝', 'easy'),
+
+('Emprestar seu nome para um amigo negativado comprar um carro financiado.', 'bad', 'Risco altíssimo! Para o banco, a dívida é 100% SUA. Se o amigo atrasar (o que é provável, já que está negativado), seu nome vai para o Serasa e seu score despenca. Amizade e dinheiro raramente se misturam bem.', '🚫', 'easy'),
+
+('Começar a investir com apenas R$ 30,00 no Tesouro Direto. Vale a pena?', 'good', 'Hábito supera valor! Começar cedo com pouco é melhor que esperar ter muito. O fator tempo é exponencial nos juros compostos. Quem investe R$ 30 hoje, aprende a investir R$ 3.000 amanhã.', '🌱', 'easy'),
+
+-- === Dificuldade: MÉDIO (Produtos e Estratégia) ===
+
+-- Financiamentos
+('Financiar um carro de luxo em 60x sem entrada é um bom negócio?', 'bad', 'Você pagará dois carros! Em 60 meses, os juros compostos duplicam a dívida. Além disso, o carro desvaloriza ~20% ao sair da loja. Você assume um passivo que gera despesa (IPVA, seguro) e perde valor.', '🚗', 'medium'),
+
+('Comprar um smartphone topo de linha parcelado em 24x sem juros, mas sem desconto à vista.', 'bad', 'O "sem juros" geralmente esconde o preço inflado. Além disso, parcelas longas comprometem sua renda futura. Se você perder o emprego, a dívida continua. O ideal é juntar e negociar desconto à vista.', '📱', 'medium'),
+
+('Fazer um consórcio para comprar carro porque "não tem juros". É vantajoso?', 'bad', 'Não tem juros, mas tem Taxa de Administração (15-20%) e o custo de oportunidade! Se você investisse o valor da parcela, provavelmente compraria o bem à vista em menos tempo e pagando menos.', '🤝', 'medium'),
+
+-- Diversificação
+('Diversificar a carteira entre Renda Fixa e Renda Variável ajuda a reduzir riscos?', 'good', 'É o "Não colocar todos os ovos na mesma cesta". Quando a bolsa cai, a renda fixa costuma proteger (e vice-versa). O rebalanceamento entre classes de ativos é a chave para crescer com segurança.', '🎨', 'medium'),
+
+('Investir em Fundos Multimercado para buscar rentabilidade acima do CDI.', 'good', 'Boa estratégia de diversificação! Gestores profissionais podem operar juros, moedas e bolsa para buscar ganhos em qualquer cenário econômico. Mas atenção: taxas altas de administração podem comer o lucro.', '📊', 'medium'),
+
+('Comprar dólar em espécie todo mês para se proteger da crise no Brasil.', 'good', 'Proteção cambial! O Real é uma moeda fraca. Ter parte do patrimônio em moeda forte preserva seu poder de compra global, especialmente se você consome eletrônicos ou viaja.', '💵', 'medium'),
+
+-- Produtos Bancários Ruins
+('O gerente ofereceu um Título de Capitalização. Devo aceitar para ajudar a guardar dinheiro?', 'bad', 'Isso NÃO é investimento! É um jogo de sorteio. O rendimento geralmente perde para a poupança e seu dinheiro fica travado. O gerente oferece para bater a meta dele, não para te ajudar.', '🎟️', 'medium'),
+
+('Aceitar o "Seguro Prestamista" empurrado pelo gerente ao fazer um empréstimo.', 'bad', 'Isso se chama Venda Casada e é ilegal se for obrigatório! O banco tenta embutir seguros caros para aumentar o lucro. Avalie se você realmente precisa ou se pode contratar um seguro melhor por fora.', '🏦', 'medium'),
+
+-- Decisões Inteligentes
+('Fazer aportes mensais em Fundos Imobiliários para gerar renda passiva.', 'good', 'O efeito "Bola de Neve"! FIIs pagam aluguéis mensais isentos de IR. Ao reinvestir esses proventos comprando mais cotas, sua renda cresce exponencialmente sem você trabalhar mais.', '🏢', 'medium'),
+
+('Contratar um Seguro de Vida para proteger minha família.', 'good', 'Gestão de Risco essencial! Se você tem dependentes, o seguro garante que eles não passem dificuldade se sua renda cessar. Investimento não é só ganhar dinheiro, é proteger quem você ama.', '👨‍👩‍👧‍👦', 'medium'),
+
+('Aportar na Previdência Privada (PGBL) para abater Imposto de Renda.', 'good', 'Planejamento Tributário! O PGBL permite deduzir até 12% da sua renda bruta anual na declaração completa do IR. Você deixa de pagar imposto hoje para o dinheiro render a seu favor por anos.', '👴', 'medium'),
+
+('Vender suas férias (10 dias) para pagar dívidas de juros altos.', 'good', 'Matematicamente correto! Os juros da dívida (ex: 8% a.m.) são muito maiores que qualquer rendimento. Eliminar o "sangramento" dos juros compostos contra você é a prioridade número 1.', '🏖️', 'medium'),
+
+('Comprar ações fracionadas (Lote de 1 a 99) porque não tem dinheiro para o lote padrão.', 'good', 'O mercado é para todos! Não espere ter R$ 3.000 para comprar um lote de 100 ações. Comprar de 1 em 1 no fracionário permite começar hoje e diversificar mesmo com pouco capital.', '🍰', 'medium'),
+
+('Usar minha Reserva de Emergência para aproveitar ações que estão em queda livre.', 'bad', 'Erro clássico! Reserva é para EMERGÊNCIAS (saúde, desemprego), não para oportunidades. Se você usa a reserva e o carro quebra amanhã, terá que vender as ações (talvez no prejuízo) ou se endividar.', '🆘', 'medium'),
+
+('Assinar 5 serviços de streaming que eu quase não assisto.', 'bad', 'O famoso "Gasto Fantasma". Somas pequenas mensais viram montanhas no longo prazo. R$ 100/mês investidos a 1% a.m. por 30 anos viram R$ 350.000! Corte o supérfluo.', '📺', 'medium'),
+
+('Investir em Debêntures Incentivadas para não pagar Imposto de Renda.', 'good', 'Incentivo ao investidor! O governo isenta de IR quem empresta dinheiro para obras de infraestrutura (estradas, energia). Você ganha uma taxa maior (IPCA + Juros) e isenção fiscal.', 'bridge', 'medium'),
+
+('Usar o 13º salário inteiro para comprar presentes de Natal.', 'bad', 'Falta de visão! O 13º é uma renda extra crucial para: 1) Pagar dívidas, 2) Pagar contas de início de ano (IPVA, IPTU à vista com desconto) ou 3) Investir. Presentes devem caber no orçamento mensal, não consumir o bônus.', '🎁', 'medium'),
+
+('Antecipar a restituição do Imposto de Renda pelo banco.', 'bad', 'É um empréstimo disfarçado! O banco te adianta o dinheiro cobrando juros. A menos que você esteja desesperado pagando juros maiores em outra dívida, espere a Receita pagar o valor cheio.', '🦁', 'medium'),
+
+-- === Dificuldade: DIFÍCIL (Conceitos Avançados) ===
+
+-- Mentalidade e Estratégia
+('Reinvestir todos os dividendos que recebi de minhas ações e FIIs.', 'good', 'Acelerador de Riqueza! Gastar os dividendos na fase de acumulação mata os juros compostos. Reinvestir compra mais ações, que pagam mais dividendos, criando um ciclo virtuoso exponencial.', '🔄', 'hard'),
+
+('Recebi um aumento! Vou aproveitar para aumentar meu aporte mensal em vez de gastar mais.', 'good', 'Combate à "Inflação de Estilo de Vida". Se você gasta tudo o que ganha, nunca ficará rico, não importa o salário. Manter o padrão de vida e investir o aumento é o segredo da liberdade financeira rápida.', '📈', 'hard'),
+
+('Estudar profundamente sobre uma empresa antes de comprar suas ações.', 'good', 'Você se torna SÓCIO! Comprar ação é virar dono do negócio. Se você não entende como a empresa ganha dinheiro, suas dívidas e lucros, você não está investindo, está apostando no escuro.', '📖', 'hard'),
+
+('Usar a regra dos 50-30-20 para dividir o orçamento.', 'good', 'Framework de sucesso! 50% para Necessidades (aluguel, comida), 30% para Desejos (lazer) e 20% para Investimentos/Dívidas. Ter um sistema evita que você gaste sem perceber.', '⚖️', 'hard'),
+
+('Contratar um Consultor Financeiro Independente (CFP) pago, em vez do assessor "gratuito".', 'good', 'Conflito de Interesses! O assessor "grátis" ganha comissão sobre os produtos que te vende (muitas vezes os piores para você). O consultor pago trabalha PARA VOCÊ e alinha os interesses.', '🧑‍💼', 'hard'),
+
+-- Armadilhas Avançadas
+('Comprar um imóvel na planta sem antes pesquisar o histórico da construtora.', 'bad', 'Risco de Entrega! Imóvel na planta é uma promessa. Se a construtora falir (como a Encol), você fica sem o dinheiro e sem o imóvel. O "desconto" da planta é o prêmio pelo risco alto que você corre.', '🏗️', 'hard'),
+
+('Pegar um empréstimo para investir tudo em uma criptomoeda nova.', 'bad', 'Alavancagem suicida! Criptos podem cair 90% em um dia. O empréstimo continua lá, com juros. Você pode perder tudo e ainda ficar devendo o banco para o resto da vida.', '🪙', 'hard'),
+
+('Fazer "Preço Médio" comprando mais ações de uma empresa que perdeu seus fundamentos.', 'bad', 'Cuidado com a ancoragem! Se a empresa piorou (perdeu lucro, aumentou dívida), comprar mais só aumenta sua exposição ao risco. Preço médio só vale se a empresa continua boa e caiu por ruído de mercado.', '⚓', 'hard'),
+
+('Operar Opções sem conhecimento para tentar "alavancar" os ganhos.', 'bad', 'Risco de Ruína! Derivativos têm vencimento. Se você errar, perde 100% do capital investido (vira pó). Iniciantes devem usar opções apenas para proteção (Hedge) de carteira, não especulação.', '💣', 'hard'),
+
+('Resgatar o investimento antes do vencimento (Marcação a Mercado).', 'bad', 'Risco de Taxa! Títulos IPCA+ ou Prefixados, se vendidos antes da hora quando os juros sobem, valem MENOS. Para garantir a taxa contratada, você DEVE levar até o vencimento.', '📅', 'hard'),
+
+('Acreditar que "Imóvel nunca desvaloriza".', 'bad', 'Mito perigoso! Imóveis sofrem depreciação física, o bairro pode piorar (segurança) e há baixa liquidez (meses para vender). Descontando a inflação e custos, muitos imóveis perdem valor real.', '🏚️', 'hard'),
+
+('Ignorar a inflação e olhar apenas para o rendimento nominal.', 'bad', 'Ilusão Monetária! Se seu investimento rendeu 10% e a inflação foi 9%, seu ganho real foi apenas 1%. Sempre calcule o Juro Real ou seu poder de compra ficará estagnado.', '🎈', 'hard'),
+
+('Fazer seguro do carro apenas contra roubo e furto, ignorando terceiros.', 'bad', 'O barato sai caro! Se você bater na traseira de um carro importado e não tiver cobertura para Terceiros, terá que pagar o conserto do seu bolso, o que pode custar anos de trabalho.', '💥', 'hard'),
+
+('Manter todo o patrimônio no Brasil (Risco Brasil).', 'bad', 'Concentração Geográfica! Se o Brasil entrar em crise grave, seus imóveis, emprego e investimentos sofrem juntos. Ter ativos no exterior descorrelaciona sua carteira da economia local.', '🇧🇷', 'hard'),
+
+-- Oportunidades Avançadas
+('Alugar Ações (Doador) para ganhar uma taxa extra na carteira de longo prazo.', 'good', 'Renda "Do Purgatório"! Você empresta suas ações para quem quer vender a descoberto. Recebe uma taxa de aluguel e CONTINUA recebendo os dividendos. É dinheiro extra com risco quase zero (garantido pela B3).', '🤝', 'hard'),
+
+('Investir em ETFs (Fundo de Índice) em vez de escolher ações individuais.', 'good', 'Eficiência estatística! 90% dos gestores profissionais não batem o índice no longo prazo. ETFs (como IVVB11 ou BOVA11) garantem a média do mercado com taxas minúsculas e diversificação instantânea.', '🌐', 'hard'),
+
+('Ter criptomoedas em uma "Cold Wallet" (carteira física) em vez de deixar na corretora.', 'good', 'Soberania! "Not your keys, not your coins". Se a corretora falir ou travar saques (como FTX), você perde tudo. Na cold wallet, o ativo é matematicamente seu e incensurável.', '🔐', 'hard'),
+
+('Investir em empresas ESG (Ambiental, Social e Governança) visando sustentabilidade.', 'good', 'Futuro dos Negócios! Empresas com boa governança e sustentáveis tendem a ter menos riscos de processos, multas ambientais e escândalos, gerando valor mais resiliente no longo prazo.', '♻️', 'hard');
+
+
+-- Inserir Perguntas DESAFIO DOS TERMOS (16 Termos)
+
+INSERT INTO public.term_questions (term, definition, difficulty) VALUES
+('Selic', 'Taxa básica de juros da economia.', 'easy'),
+('Liquidez', 'Facilidade de transformar um ativo em dinheiro.', 'easy'),
+('Dividendo', 'Parte do lucro da empresa distribuída aos acionistas.', 'easy'),
+('IPCA', 'Índice oficial de inflação no Brasil.', 'easy'),
+('CDB', 'Empréstimo que você faz para o banco.', 'easy'),
+('Volatilidade', 'Variação do preço de um ativo ao longo do tempo.', 'medium'),
+('Day Trade', 'Compra e venda de ativos no mesmo dia.', 'medium'),
+('FGC', 'Garantia de até R$ 250 mil em caso de quebra do banco.', 'medium'),
+('IOF', 'Imposto sobre Operações Financeiras.', 'medium'),
+('Câmbio', 'Troca de uma moeda por outra (ex: Real por Dólar).', 'medium'),
+('Bear Market', 'Mercado em tenência de baixa (pessimista).', 'hard'),
+('Bull Market', 'Mercado em tendência de alta (otimista).', 'hard'),
+('PLR', 'Participação nos Lucros e Resultados.', 'hard'),
+('Royalty', 'Pagamento pelo direito de uso de uma propriedade ou marca.', 'hard'),
+('Benchmark', 'Índice de referência para comparar rentabilidade.', 'hard'),
+('Passivo', 'Dívidas e obrigações financeiras.', 'hard');
