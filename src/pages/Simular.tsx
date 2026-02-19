@@ -14,6 +14,13 @@ import { useMarketData } from "@/hooks/useMarketData";
 export default function Simular() {
   const { rates, isLoading } = useMarketData();
   const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+  }, []);
 
   if (isLoading) {
     return (
@@ -96,7 +103,7 @@ export default function Simular() {
                   </div>
 
                   {/* Passamos as taxas reais para o componente */}
-                  <CompoundInterestCalculator rates={rates} />
+                  <CompoundInterestCalculator rates={rates} userId={user?.id} />
                 </div>
               </TabsContent>
 

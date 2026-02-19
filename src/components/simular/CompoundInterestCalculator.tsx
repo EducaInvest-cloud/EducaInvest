@@ -17,23 +17,31 @@ import {
   Calendar,
   Lock,
   Unlock,
-  Clock
+  Clock,
+  Save,
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MarketRates } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface CalculatorProps {
   rates: MarketRates;
+  userId?: string;
 }
 
-export function CompoundInterestCalculator({ rates }: CalculatorProps) {
+export function CompoundInterestCalculator({ rates, userId }: CalculatorProps) {
   const [initialValue, setInitialValue] = useState(1000);
   const [monthlyInvestment, setMonthlyInvestment] = useState(500);
   const [years, setYears] = useState(10);
   const [rateType, setRateType] = useState<'SELIC' | 'CDI' | 'IPCA' | 'POUPANCA' | 'CUSTOM'>('SELIC');
   const [annualRate, setAnnualRate] = useState(rates.selic || 0);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (rateType === 'SELIC' && rates.selic) setAnnualRate(rates.selic);
@@ -101,6 +109,47 @@ export function CompoundInterestCalculator({ rates }: CalculatorProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: number) => void) => {
     const rawValue = e.target.value.replace(/\D/g, '');
     setter(Number(rawValue) / 100);
+  };
+
+  const handleSaveSimulation = async () => {
+    if (!userId) {
+      toast({
+        title: "Login necessário",
+        description: "Você precisa estar logado para salvar simulações.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('simulacoes').insert({
+        usuario_id: userId,
+        tipo_ativo: 'JUROS_COMPOSTOS', // ou outro identificador
+        valor_inicial: initialValue,
+        prazo_meses: years * 12,
+        resultado_estimado: results.total,
+        // Outros campos que a tabela possa ter:
+        // aporte_mensal: monthlyInvestment,
+        // taxa_anual: annualRate
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Simulação salva!",
+        description: "Você pode acessá-la na sua Dashboard.",
+      });
+    } catch (error) {
+      console.error('Erro ao salvar simulação:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Ocorreu um erro ao salvar sua simulação. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const rateOptions = [
@@ -371,6 +420,22 @@ export function CompoundInterestCalculator({ rates }: CalculatorProps) {
               />
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* --- SAVE BUTTON SECTION --- */}
+        <div className="flex justify-center">
+          <Button
+            onClick={handleSaveSimulation}
+            className="gap-2"
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {isSaving ? "Salvando..." : "Salvar Simulação"}
+          </Button>
         </div>
 
         <p className="text-xs text-center text-muted-foreground/60 italic">
