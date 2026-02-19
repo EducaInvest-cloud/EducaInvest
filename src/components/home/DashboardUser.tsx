@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Play, CheckCircle2, Star, ArrowRight } from "lucide-react";
+import { RecentSimulations } from "./RecentSimulations";
 
 export function DashboardUser({ user, perfil }: { user: any; perfil: any; progress?: any; }) {
   const [nextLesson, setNextLesson] = useState<any>(null);
@@ -159,6 +160,9 @@ export function DashboardUser({ user, perfil }: { user: any; perfil: any; progre
             </div>
           </div>
         </motion.div>
+
+        {/* Widget de Simulações Recentes */}
+        <RecentSimulations userId={user.id} />
 
       </div>
     </section>
