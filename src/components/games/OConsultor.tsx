@@ -29,6 +29,7 @@ export const OConsultor = ({ onBack, user }: Props) => {
     const [questions, setQuestions] = useState<GameQuestion[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [score, setScore] = useState(0);
+    const [currentXP, setCurrentXP] = useState(0); // New State: Tracks exact XP
     const [showFeedback, setShowFeedback] = useState(false);
     const [lastAnswerCorrect, setLastAnswerCorrect] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -37,12 +38,17 @@ export const OConsultor = ({ onBack, user }: Props) => {
     const [currentStreak, setCurrentStreak] = useState(0);
 
     const scoreRef = useRef(0);
+    const xpRef = useRef(0); // Ref for XP
     const xpSavedRef = useRef(false);
 
     // Sync refs with state
     useEffect(() => {
         scoreRef.current = score;
     }, [score]);
+
+    useEffect(() => {
+        xpRef.current = currentXP;
+    }, [currentXP]);
 
     useEffect(() => {
         xpSavedRef.current = xpSaved;
@@ -59,13 +65,11 @@ export const OConsultor = ({ onBack, user }: Props) => {
     }, [currentIndex, questions.length, xpSaved]);
 
     const handleSaveXP = () => {
-        if (xpSaved || score === 0) return;
-
-        const xpAmount = score * 10;
+        if (xpSaved || currentXP === 0) return;
 
         // Save Server (REAL)
         if (user) {
-            gameService.addUserXP(user.id, xpAmount);
+            gameService.addUserXP(user.id, currentXP);
         }
 
         setXpSaved(true);
@@ -116,8 +120,15 @@ export const OConsultor = ({ onBack, user }: Props) => {
         setLastAnswerCorrect(isCorrect);
         if (isCorrect) {
             setScore(s => s + 1);
+
+            // XP Calculation Logic
+            // Base: 20 XP
+            // Streak Bonus: +10 XP if streak > 0
             setCurrentStreak(s => {
                 const newStreak = s + 1;
+                const bonus = s > 0 ? 10 : 0;
+                setCurrentXP(prev => prev + 20 + bonus);
+
                 // Update best streak immediately if higher
                 const stats = JSON.parse(localStorage.getItem('consultorStats') || '{"totalAnalyzed":0,"bestStreak":0}');
                 if (newStreak > stats.bestStreak) {
@@ -147,6 +158,7 @@ export const OConsultor = ({ onBack, user }: Props) => {
     const resetGame = () => {
         setCurrentIndex(0);
         setScore(0);
+        setCurrentXP(0);
         setShowFeedback(false);
         setDirection(null);
         setXpSaved(false);
@@ -172,13 +184,13 @@ export const OConsultor = ({ onBack, user }: Props) => {
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Treino Concluído!</h2>
                 <p className="text-xl mb-6 text-muted-foreground">
-                    Você analisou todos os cenários e teve um desempenho de:
+                    Você analisou todos os cenários e garantiu:
                 </p>
-                <div className="text-5xl font-bold text-primary mb-8 tabular-nums">
-                    {formatNumber(Math.round((score / questions.length) * 100))}%
+                <div className="text-5xl font-bold text-primary mb-2 tabular-nums">
+                    +{formatNumber(currentXP)} XP
                 </div>
-                <p className="mb-8 text-white/80 tabular-nums">
-                    Acertos: <span className="font-bold text-emerald-400">{formatNumber(score)}</span> / {formatNumber(questions.length)}
+                <p className="mb-8 text-white/60 text-sm">
+                    Acertos: <span className="font-bold text-emerald-400">{formatNumber(score)}</span> de {formatNumber(questions.length)}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
