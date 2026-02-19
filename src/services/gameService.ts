@@ -19,22 +19,45 @@ export interface EmpireItem {
 export const gameService = {
     async getConsultorQuestions() {
         const { data, error } = await supabase
-            .from('game_questions')
-            .select('*')
-            .eq('game_type', 'consultor');
+            .from('consultor_questions')
+            .select('*');
 
         if (error) throw error;
-        return data as GameQuestion[];
+        // Map the new table structure back to GameQuestion format for frontend compatibility if needed, 
+        // OR update the frontend to use the new structure. 
+        // Given the code in OConsultor expects a nested 'content' object, we might need to adapt.
+        // The new table has 'text', 'type', etc directly on columns.
+        // Let's adapt here to return the expected structure OR update the component.
+        // Adapting here is safer to avoid breaking changes in components.
+        return data.map(q => ({
+            id: q.id,
+            game_type: 'consultor',
+            content: {
+                text: q.text,
+                type: q.type,
+                explanation: q.explanation,
+                icon: q.icon,
+            },
+            difficulty: q.difficulty
+        })) as GameQuestion[];
     },
 
     async getTermPairs() {
         const { data, error } = await supabase
-            .from('game_questions')
-            .select('*')
-            .eq('game_type', 'termo');
+            .from('term_questions')
+            .select('*');
 
         if (error) throw error;
-        return data as GameQuestion[];
+
+        return data.map(q => ({
+            id: q.id,
+            game_type: 'termo',
+            content: {
+                term: q.term,
+                definition: q.definition
+            },
+            difficulty: q.difficulty
+        })) as GameQuestion[];
     },
 
     async getEmpireItems() {
