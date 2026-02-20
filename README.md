@@ -16,7 +16,7 @@ Projeto final desenvolvido no programa <strong>DiverseDev 2025</strong> em parce
 ## 🌐 Acesse o Projeto
 
 🔗 **Aplicação Online:**  
-https://educainvest.lovable.app/
+https://educainvest.vercel.app/
 
 ---
 
@@ -167,7 +167,7 @@ EducaInvest/
 #### 1️⃣ Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/educainvest.git
+git clone https://github.com/EducaInvest-cloud/EducaInvest.git
 cd educainvest
 ```
 
@@ -179,12 +179,14 @@ npm install
 
 #### 3️⃣ Configure as variáveis de ambiente
 
-Crie um arquivo `.env` na raiz:
+Copie o arquivo de exemplo para criar seu `.env`:
 
-```env
-VITE_SUPABASE_URL=sua_url_aqui
-VITE_SUPABASE_ANON_KEY=sua_chave_aqui
+```bash
+cp .env.example .env
 ```
+(Ou copie manualmente se estiver no Windows sem bash)
+
+Preencha o arquivo `.env` com suas credenciais do Supabase.
 
 #### 4️⃣ Execute o projeto
 
@@ -207,3 +209,20 @@ http://localhost:8080
 - Dados financeiros atualizados automaticamente  
 - Gamificação como motor de engajamento  
 - Foco em iniciantes  
+
+---
+
+## 📜 Scripts Disponíveis
+
+- `npm run dev`: Inicia o servidor de desenvolvimento.
+- `npm run build`: Gera o build para produção.
+- `npm run lint`: Executa a verificação de código (linting).
+- `npm run preview`: Visualiza a versão de produção localmente.
+
+---
+
+## 📄 Direitos Autorais
+
+© 2026 EducaInvest. Todos os direitos reservados.
+
+Este projeto é de propriedade exclusiva. O código-fonte está disponível publicamente apenas para fins de portfólio e demonstração. Não é permitida a reprodução, distribuição ou uso comercial de qualquer parte deste projeto (código, design ou ideias) sem autorização expressa do autor.
