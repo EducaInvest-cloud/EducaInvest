@@ -73,28 +73,14 @@ export const gameService = {
     async addUserXP(userId: string, amount: number) {
         if (!userId || amount <= 0) return;
 
-        // Fetch current XP
-        const { data: profile, error: fetchError } = await supabase
-            .from('perfis')
-            .select('xp_total')
-            .eq('id', userId)
-            .single();
+        // Chamada segura via RPC server-side (impede manipulação pelo cliente)
+        const { error } = await supabase.rpc('add_user_xp', {
+            p_user_id: userId,
+            p_amount: amount
+        });
 
-        if (fetchError) {
-            console.error("Error fetching user XP for game:", fetchError);
-            return;
-        }
-
-        const newTotal = (profile?.xp_total || 0) + amount;
-
-        // Update XP
-        const { error: updateError } = await supabase
-            .from('perfis')
-            .update({ xp_total: newTotal })
-            .eq('id', userId);
-
-        if (updateError) {
-            console.error("Error updating user XP for game:", updateError);
+        if (error) {
+            console.error("Error adding user XP:", error);
         } else {
             // Emit event for UI updates (e.g. sidebar XP counter)
             window.dispatchEvent(new CustomEvent('educainvest_xp_updated'));
@@ -104,13 +90,10 @@ export const gameService = {
     async resetXP(userId: string) {
         if (!userId) return { success: false };
         try {
-            const { error } = await supabase
-                .from('perfis')
-                .update({
-                    xp_total: 0,
-                    current_level: 'Iniciante'
-                })
-                .eq('id', userId);
+            // Chamada segura via RPC server-side
+            const { error } = await supabase.rpc('reset_user_xp', {
+                p_user_id: userId
+            });
 
             if (error) throw error;
             window.dispatchEvent(new CustomEvent('educainvest_xp_updated'));

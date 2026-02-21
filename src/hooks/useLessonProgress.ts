@@ -135,10 +135,11 @@ export function useLessonProgress(
 
             setCompletedLessonIds(prev => [...prev, currentAulaId]);
 
-            const { data: perfil } = await supabase.from('perfis').select('xp_total').eq('id', user.id).single();
-            const newTotal = (perfil?.xp_total || 0) + xpAmount;
-
-            await supabase.from('perfis').update({ xp_total: newTotal }).eq('id', user.id);
+            // Chamada segura via RPC server-side (impede manipulação pelo cliente)
+            await supabase.rpc('add_user_xp', {
+                p_user_id: user.id,
+                p_amount: xpAmount
+            });
 
             window.dispatchEvent(new CustomEvent('educainvest_xp_updated'));
 

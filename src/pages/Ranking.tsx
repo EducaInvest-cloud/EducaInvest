@@ -22,13 +22,19 @@ export default function Ranking() {
             setCurrentUser(session?.user);
 
             const { data, error } = await supabase
-                .from('perfis')
-                .select('*, full_name:nome_completo, avatar_url:url_avatar')
+                .from('ranking_publico')
+                .select('*')
                 .order('xp_total', { ascending: false })
                 .limit(50);
 
             if (data) {
-                setUsers(data as UserProfile[]);
+                // Mapeia os campos da view para o tipo UserProfile
+                const mapped = data.map((d: any) => ({
+                    ...d,
+                    full_name: d.nome_completo,
+                    avatar_url: d.url_avatar
+                }));
+                setUsers(mapped as UserProfile[]);
             }
         } catch (error) {
             console.error("Error fetching ranking:", error);
