@@ -43,7 +43,19 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
                 const parsed = JSON.parse(saved);
                 const loadedBalance = Number(parsed.balance);
                 setBalance(isNaN(loadedBalance) ? 0 : loadedBalance);
-                setOwnedItems(parsed.ownedItems || {});
+                
+                // Sanitize ownedItems count to numbers
+                const loadedItems: Record<number, number> = {};
+                if (parsed.ownedItems) {
+                    Object.keys(parsed.ownedItems).forEach(key => {
+                        const id = Number(key);
+                        const count = Number(parsed.ownedItems[key]);
+                        if (!isNaN(id) && !isNaN(count)) {
+                            loadedItems[id] = count;
+                        }
+                    });
+                }
+                setOwnedItems(loadedItems);
             } catch (e) {
                 console.error("Failed to load save", e);
             }
@@ -57,26 +69,31 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
             let newPassive = 0;
 
             items.forEach(item => {
-                const count = ownedItems[item.id] || 0;
+                const count = Number(ownedItems[item.id]) || 0;
+                const baseIncome = Number(item.base_income) || 0;
                 if (count > 0) {
                     if (item.type === 'active') {
-                        newClickVal += item.base_income * count;
+                        newClickVal += baseIncome * count;
                     } else {
-                        newPassive += item.base_income * count;
+                        newPassive += baseIncome * count;
                     }
                 }
             });
 
-            setClickValue(newClickVal);
-            setPassiveIncome(newPassive);
+            setClickValue(isNaN(newClickVal) ? 1 : Math.max(1, newClickVal));
+            setPassiveIncome(isNaN(newPassive) ? 0 : Math.max(0, newPassive));
         }
     }, [ownedItems, items]);
 
     useEffect(() => {
         const timer = setInterval(() => {
-            if (passiveIncome > 0) {
-                setBalance(b => b + passiveIncome);
-                checkXp(passiveIncome);
+            const passive = Number(passiveIncome) || 0;
+            if (passive > 0) {
+                setBalance(b => {
+                    const current = Number(b) || 0;
+                    return current + passive;
+                });
+                checkXp(passive);
             }
         }, 1000);
         return () => clearInterval(timer);
@@ -127,10 +144,13 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
     };
 
     const handleWork = (e: React.MouseEvent<HTMLButtonElement>) => {
-
+        const val = Number(clickValue) || 1;
         // Add balance
-        setBalance(b => b + clickValue);
-        checkXp(clickValue);
+        setBalance(b => {
+            const current = Number(b) || 0;
+            return current + val;
+        });
+        checkXp(val);
 
         // Add floating text
         const rect = e.currentTarget.getBoundingClientRect();
@@ -139,7 +159,7 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
         const y = e.clientY - rect.top + (Math.random() * 40 - 20);
 
         const id = clickIdRef.current++;
-        setClicks(prev => [...prev, { id, x, y, val: clickValue }]);
+        setClicks(prev => [...prev, { id, x, y, val: val }]);
 
         // Cleanup floating text after 1s
         setTimeout(() => {
@@ -148,22 +168,25 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
     };
 
     const getCost = (item: EmpireItem, count: number) => {
-        return Math.floor(item.base_cost * Math.pow(1.12, count));
+        const baseCost = Number(item.base_cost) || 0;
+        return Math.floor(baseCost * Math.pow(1.12, count));
     };
 
     const buyItem = (item: EmpireItem) => {
-        const count = ownedItems[item.id] || 0;
+        const count = Number(ownedItems[item.id]) || 0;
         const cost = getCost(item, count);
+        const currentBalance = Number(balance) || 0;
 
-        if (balance >= cost) {
-
-            setBalance(b => b - cost);
+        if (currentBalance >= cost) {
+            setBalance(b => {
+                const current = Number(b) || 0;
+                return Math.max(0, current - cost);
+            });
             setOwnedItems(prev => ({
                 ...prev,
-                [item.id]: (prev[item.id] || 0) + 1
+                [item.id]: (Number(prev[item.id]) || 0) + 1
             }));
         } else {
-
             toast({
                 title: "Saldo insuficiente",
                 description: `Você precisa de ED$ ${formatNumber(cost)}`,
