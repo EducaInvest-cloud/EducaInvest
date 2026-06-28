@@ -24,6 +24,12 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
     const [isLoading, setIsLoading] = useState(true);
     const xpProgressRef = useRef(0);
 
+    // Keep saveStateRef updated with the latest balance and owned items for safe background autosaving
+    const saveStateRef = useRef({ balance, ownedItems });
+    useEffect(() => {
+        saveStateRef.current = { balance, ownedItems };
+    }, [balance, ownedItems]);
+
     // Floating texts
     const [clicks, setClicks] = useState<{ id: number; x: number; y: number; val: number }[]>([]);
     const clickIdRef = useRef(0);
@@ -35,7 +41,8 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                setBalance(parsed.balance || 0);
+                const loadedBalance = Number(parsed.balance);
+                setBalance(isNaN(loadedBalance) ? 0 : loadedBalance);
                 setOwnedItems(parsed.ownedItems || {});
             } catch (e) {
                 console.error("Failed to load save", e);
@@ -78,16 +85,11 @@ export const EmpireBuilder = ({ onBack, user }: Props) => {
     useEffect(() => {
         // Auto-save every 5s - stable interval
         const timer = setInterval(() => {
-            setBalance(currentBalance => {
-                setOwnedItems(currentItems => {
-                    localStorage.setItem('empireSave', JSON.stringify({
-                        balance: currentBalance,
-                        ownedItems: currentItems
-                    }));
-                    return currentItems;
-                });
-                return currentBalance;
-            });
+            const { balance: currentBalance, ownedItems: currentItems } = saveStateRef.current;
+            localStorage.setItem('empireSave', JSON.stringify({
+                balance: currentBalance,
+                ownedItems: currentItems
+            }));
         }, 5000);
         return () => clearInterval(timer);
     }, []);

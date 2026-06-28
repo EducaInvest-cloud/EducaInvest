@@ -41,6 +41,7 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isAudioLoading, setIsAudioLoading] = useState(true);
+  const [audioError, setAudioError] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   // Ref para o input range — controle 100% via DOM, sem React
@@ -64,7 +65,7 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
 
   useImperativeHandle(ref, () => ({
     play: () => {
-      audioRef.current?.play();
+      audioRef.current?.play().catch(err => console.error("Error playing audio from ref:", err));
       setIsPlaying(true);
     },
     pause: () => {
@@ -105,21 +106,36 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
 
     const loadAudioBlob = async () => {
       setIsAudioLoading(true);
+      setAudioError(false);
       try {
         // Constrói a URL pública do Supabase Storage
         const { data } = supabase.storage.from('audios').getPublicUrl(`Aula-${aula.id}.mp3`);
+        if (!data || !data.publicUrl) {
+          throw new Error("URL pública não encontrada no Supabase");
+        }
+
         const response = await fetch(data.publicUrl);
+        if (!response.ok) {
+          throw new Error(`Erro HTTP ${response.status} ao carregar áudio`);
+        }
+
+        // Verifica se a resposta é um HTML (o que indica que caímos no fallback do Vite/SPA)
+        const contentType = response.headers.get("content-type");
+        if (contentType && !contentType.includes("audio") && !contentType.includes("octet-stream")) {
+          throw new Error("A URL retornou um tipo de arquivo inválido (provavelmente HTML/SPA)");
+        }
+
         if (cancelled) return;
         const blob = await response.blob();
         if (cancelled) return;
         currentBlobUrl = URL.createObjectURL(blob);
         setBlobUrl(currentBlobUrl);
+        setAudioError(false);
       } catch (err) {
         console.error('Erro ao carregar áudio como Blob:', err);
-        // Fallback: usa URL direta do Supabase (seeking pode não funcionar)
         if (!cancelled) {
-          const { data } = supabase.storage.from('audios').getPublicUrl(`Aula-${aula.id}.mp3`);
-          setBlobUrl(data.publicUrl);
+          setBlobUrl(null);
+          setAudioError(true);
         }
       } finally {
         if (!cancelled) setIsAudioLoading(false);
@@ -182,16 +198,24 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
       }
     };
 
+    const onAudioError = (e: Event) => {
+      console.error("Erro no elemento de áudio:", e);
+      setAudioError(true);
+      setIsPlaying(false);
+    };
+
     audio.addEventListener("timeupdate", onTimeUpdateEvent);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("ended", onEndedEvent);
     audio.addEventListener("seeked", onSeekedEvent);
+    audio.addEventListener("error", onAudioError);
 
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdateEvent);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("ended", onEndedEvent);
       audio.removeEventListener("seeked", onSeekedEvent);
+      audio.removeEventListener("error", onAudioError);
     };
   }, [onTimeUpdate, onEnded, estimatedDuration, updateRangeVisual]);
 
@@ -209,10 +233,18 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
 
     if (isPlaying) {
       audio.pause();
+      setIsPlaying(false);
     } else {
-      audio.play();
+      audio.play()
+        .then(() => {
+          setIsPlaying(true);
+        })
+        .catch(err => {
+          console.error("Erro ao iniciar reprodução de áudio:", err);
+          setAudioError(true);
+          setIsPlaying(false);
+        });
     }
-    setIsPlaying(!isPlaying);
   };
 
   // === HANDLERS DO RANGE INPUT (UNCONTROLLED) ===
@@ -544,18 +576,27 @@ export const PodcastCard = forwardRef<PodcastCardHandle, PodcastCardProps>(({ au
                   <Button
                     onClick={togglePlayPause}
                     size="lg"
-                    disabled={isAudioLoading}
-                    className="relative overflow-hidden bg-white text-slate-900 hover:bg-slate-200 shadow-[0_0_30px_rgba(255,255,255,0.1)] rounded-full px-8 h-14 font-bold text-base transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] group/btn disabled:opacity-60 disabled:cursor-wait"
+                    disabled={isAudioLoading || audioError || !blobUrl}
+                    className="relative overflow-hidden bg-white text-slate-900 hover:bg-slate-200 shadow-[0_0_30px_rgba(255,255,255,0.1)] rounded-full px-8 h-14 font-bold text-base transition-all hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.2)] group/btn disabled:opacity-60"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-100%] group-hover/btn:animate-shimmer" />
                     {isAudioLoading ? (
                       <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                    ) : (audioError || !blobUrl) ? (
+                      <VolumeX className="w-5 h-5 mr-3" />
                     ) : isPlaying ? (
                       <Pause className="w-5 h-5 mr-3 fill-current" />
                     ) : (
                       <Play className="w-5 h-5 mr-3 fill-current" />
                     )}
-                    {isAudioLoading ? "Carregando..." : isPlaying ? "Pausar" : "Começar Aula"}
+                    {isAudioLoading 
+                      ? "Carregando..." 
+                      : (audioError || !blobUrl)
+                        ? "Áudio Indisponível" 
+                        : isPlaying 
+                          ? "Pausar" 
+                          : "Começar Aula"
+                    }
                   </Button>
 
                   {/* Controles Secundários */}
