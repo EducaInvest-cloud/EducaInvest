@@ -144,15 +144,15 @@ O orquestrador central do nosso assistente de IA (o Agente n8n) está hospedado 
 Abaixo estão as evidências da arquitetura em funcionamento em ambiente de produção:
 
 ### 1. Servidor Cloud (DigitalOcean Droplet)
-![Painel da DigitalOcean](https://giant-tan-qix9eplt.edgeone.dev/)
+[![Captura-de-tela-2026-08-16-160242.png](https://i.postimg.cc/Kz5bQc53/Captura-de-tela-2026-08-16-160242.png)](https://postimg.cc/S2jHxh3m)
 > Instância provisionada e ativa na DigitalOcean (Ubuntu 24.04), servindo como ambiente isolado para o nosso orquestrador n8n.
 
 ### 2. Agente n8n em Execução (Backend)
-![Painel de Execuções do n8n](https://meaningful-apricot-ukyotu6x.edgeone.dev/)
+[![Captura-de-tela-2026-08-16-170949.png](https://i.postimg.cc/Dy0hdT4Q/Captura-de-tela-2026-08-16-170949.png)](https://postimg.cc/pyw3R3Zy)
 > Histórico de execuções bem-sucedidas no painel do n8n, provando o processamento assíncrono de webhooks e a integração contínua com a OpenAI e o Supabase.
 
 ### 3. Aplicação em Produção (Frontend Vercel)
-![Chatbot no Vercel](https://ethnic-emerald-imj5sgde.edgeone.dev/)
+[![Captura-de-tela-2026-08-16-170407.png](https://i.postimg.cc/Y90RDb6X/Captura-de-tela-2026-08-16-170407.png)](https://postimg.cc/N9hR58PT)
 > O assistente virtual interativo em execução na interface web, respondendo em tempo real aos utilizadores finais.
 
 Para rodar o backend localmente ou reproduzir a nossa infraestrutura:
