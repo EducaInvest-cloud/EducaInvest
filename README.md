@@ -105,9 +105,12 @@ Desenvolvido em React + Vite com TypeScript, utilizando a plataforma Lovable com
 
 ---
 
-### 2️⃣ Backend & Automação (n8n)
+### 2️⃣ Backend & Automação (Server-Side)
 
-O “cérebro” do sistema roda no **n8n**, orquestrando dois fluxos principais:
+* **n8n (Hospedagem Própria):** O cérebro do nosso backend. Usamos o n8n para orquestrar webhooks, consumir APIs externas, aplicar regras de negócio (ETL) e gerenciar a comunicação com a IA.
+* **DigitalOcean (Droplet):** O n8n está hospedado em um servidor Linux independente, rodando de forma isolada e escalável.
+* **Docker:** Containerização do n8n para garantir estabilidade, facilidade de deploy e gerenciamento de volumes persistentes.
+* **Cloudflare Tunnels:** Criação de túneis seguros (HTTPS) para expor os webhooks do n8n (rodando na DigitalOcean) de forma segura para o frontend (rodando na Vercel), evitando problemas de CORS e garantindo comunicação criptografada. Orquestrando dois fluxos principais:
 
 #### 🔄 Fluxo ETL Diário
 
@@ -131,6 +134,32 @@ O “cérebro” do sistema roda no **n8n**, orquestrando dois fluxos principais
 - Armazenamento relacional de usuários, progresso e indicadores  
 - Full Text Search para busca semântica  
 - RLS (Row Level Security) configurado para proteger os dados  
+
+---
+
+## 🚀 Deploy e Infraestrutura (Backend)
+
+Uma das maiores conquistas técnicas do projeto foi o deploy independente do nosso orquestrador (n8n). 
+
+Para rodar o backend localmente ou reproduzir a nossa infraestrutura:
+
+### Pré-requisitos do Servidor
+* Servidor Linux (Ubuntu recomendado - *Droplet DigitalOcean*)
+* Docker e Docker Compose instalados
+
+### Subindo o n8n via Docker com Túnel Cloudflare
+Para garantir que o n8n rode de forma segura e que seus webhooks fiquem acessíveis para o frontend, utilizamos o seguinte comando (que desabilita o secure cookie nativo para delegar a segurança ao túnel):
+
+```bash
+docker run -d \
+  --name n8n \
+  --restart unless-stopped \
+  -p 5678:5678 \
+  -e N8N_SECURE_COOKIE=false \
+  -e WEBHOOK_URL=[https://seu-tunel.trycloudflare.com](https://seu-tunel.trycloudflare.com) \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n 
+  ```
 
 ---
 
@@ -218,6 +247,15 @@ http://localhost:8080
 - `npm run build`: Gera o build para produção.
 - `npm run lint`: Executa a verificação de código (linting).
 - `npm run preview`: Visualiza a versão de produção localmente.
+
+---
+
+## 👨‍💻 Desenvolvedores
+
+Este projeto foi construído colaborativamente pelos desenvolvedores:
+
+* **Sara Pires** - [@SarahLuthien](https://github.com/SarahLuthien)
+* **Bruno Garcia** - [@brng01](https://github.com/brng01)
 
 ---
 
