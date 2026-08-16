@@ -139,7 +139,21 @@ Desenvolvido em React + Vite com TypeScript, utilizando a plataforma Lovable com
 
 ## 🚀 Deploy e Infraestrutura (Backend)
 
-Uma das maiores conquistas técnicas do projeto foi o deploy independente do nosso orquestrador (n8n). 
+O orquestrador central do nosso assistente de IA (o Agente n8n) está hospedado e em execução num servidor Cloud Linux na **DigitalOcean**, utilizando contêineres Docker e Cloudflare Tunnels para expor os webhooks de forma segura para o frontend na **Vercel**.
+
+Abaixo estão as evidências da arquitetura em funcionamento em ambiente de produção:
+
+### 1. Servidor Cloud (DigitalOcean Droplet)
+![Painel da DigitalOcean](https://giant-tan-qix9eplt.edgeone.dev/)
+> Instância provisionada e ativa na DigitalOcean (Ubuntu 24.04), servindo como ambiente isolado para o nosso orquestrador n8n.
+
+### 2. Agente n8n em Execução (Backend)
+![Painel de Execuções do n8n](https://meaningful-apricot-ukyotu6x.edgeone.dev/)
+> Histórico de execuções bem-sucedidas no painel do n8n, provando o processamento assíncrono de webhooks e a integração contínua com a OpenAI e o Supabase.
+
+### 3. Aplicação em Produção (Frontend Vercel)
+![Chatbot no Vercel](https://ethnic-emerald-imj5sgde.edgeone.dev/)
+> O assistente virtual interativo em execução na interface web, respondendo em tempo real aos utilizadores finais.
 
 Para rodar o backend localmente ou reproduzir a nossa infraestrutura:
 
